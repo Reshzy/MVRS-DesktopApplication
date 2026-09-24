@@ -15,6 +15,7 @@ from app.ui.pages.discover_page import DiscoverPage
 from app.ui.pages.history_page import HistoryPage
 from app.ui.pages.insights_page import InsightsPage
 from app.ui.pages.login_page import LoginPage
+from app.ui.pages.movie_details_page import MovieDetailsPage
 from app.ui.pages.onboarding_page import OnboardingPage
 from app.ui.pages.profile_page import ProfilePage
 from app.ui.pages.recommendations_page import RecommendationsPage
@@ -23,11 +24,21 @@ from app.ui.pages.watchlist_page import WatchlistPage
 from app.ui.pages.welcome_page import WelcomePage
 from app.ui.widgets.sidebar import Sidebar
 from app.ui.widgets.topbar import TopBar
+from app.ui.workers.image_worker import ImageLoader
 
 ConfirmFn = Callable[..., bool]
 
 SHELL_PAGES = frozenset(
-    {"home", "discover", "recommendations", "watchlist", "history", "insights", "profile"}
+    {
+        "home",
+        "discover",
+        "recommendations",
+        "watchlist",
+        "history",
+        "insights",
+        "profile",
+        "movie_details",
+    }
 )
 PAGE_TITLES = {
     "welcome": "Welcome",
@@ -41,6 +52,7 @@ PAGE_TITLES = {
     "history": "History",
     "insights": "Insights",
     "profile": "Profile",
+    "movie_details": "Movie Details",
 }
 
 
@@ -51,6 +63,7 @@ class MainWindow(QMainWindow):
         auth_service: AuthService | None = None,
         app_state: AppState | None = None,
         confirm_logout: ConfirmFn | None = None,
+        movie_service: MovieService | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("mainWindow")
@@ -64,11 +77,12 @@ class MainWindow(QMainWindow):
         if auth_service is None:
             self._owned_session = SessionLocal()
             self.auth_service = AuthService(self._owned_session, self.app_state)
-            self.movie_service = MovieService(session=self._owned_session)
+            self.movie_service = movie_service or MovieService(session=self._owned_session)
         else:
             self.auth_service = auth_service
-            self.movie_service = MovieService(cache_enabled=False)
+            self.movie_service = movie_service or MovieService(cache_enabled=False)
 
+        self.image_loader = ImageLoader(self)
         self.sidebar = Sidebar(self)
         self.topbar = TopBar(self)
         self.stack = QStackedWidget(self)
@@ -80,7 +94,8 @@ class MainWindow(QMainWindow):
         self.register_page = RegisterPage(self.auth_service, self)
         self.onboarding_page = OnboardingPage(self)
         self.dashboard_page = DashboardPage(self)
-        self.discover_page = DiscoverPage(self)
+        self.discover_page = DiscoverPage(self.movie_service, self.image_loader, self)
+        self.movie_details_page = MovieDetailsPage(self)
         self.recommendations_page = RecommendationsPage(self)
         self.watchlist_page = WatchlistPage(self)
         self.history_page = HistoryPage(self)
@@ -93,6 +108,7 @@ class MainWindow(QMainWindow):
         self._register_page("onboarding", self.onboarding_page)
         self._register_page("home", self.dashboard_page)
         self._register_page("discover", self.discover_page)
+        self._register_page("movie_details", self.movie_details_page)
         self._register_page("recommendations", self.recommendations_page)
         self._register_page("watchlist", self.watchlist_page)
         self._register_page("history", self.history_page)
@@ -126,7 +142,9 @@ class MainWindow(QMainWindow):
         self.sidebar.navigate_requested.connect(self.navigate)
         self.sidebar.logout_requested.connect(self.logout)
         self.topbar.profile_requested.connect(lambda: self.navigate("profile"))
-        self.topbar.search_requested.connect(lambda _query: self.navigate("discover"))
+        self.topbar.search_requested.connect(self.search_from_topbar)
+        self.discover_page.movie_selected.connect(self.show_movie_details)
+        self.movie_details_page.back_requested.connect(self.show_discover)
 
         self.show_welcome()
 
@@ -160,6 +178,17 @@ class MainWindow(QMainWindow):
         self.app_state.clear_current_user()
         self.show_dashboard()
 
+    def show_discover(self) -> None:
+        self.navigate("discover")
+
+    def search_from_topbar(self, query: str) -> None:
+        self.app_state.active_filters["query"] = query
+        self.show_discover()
+
+    def show_movie_details(self, movie: object) -> None:
+        self.app_state.selected_movie = movie
+        self.navigate("movie_details")
+
     def logout(self) -> None:
         confirmed = self._confirm_logout(
             parent=self,
@@ -187,13 +216,15 @@ class MainWindow(QMainWindow):
         self.sidebar.setVisible(in_shell)
         self.topbar.setVisible(in_shell)
         if in_shell:
-            self.sidebar.set_current(page_id)
+            sidebar_id = "discover" if page_id == "movie_details" else page_id
+            self.sidebar.set_current(sidebar_id)
             self.topbar.set_title(PAGE_TITLES[page_id])
             self.topbar.set_user(self.app_state.current_user)
         title = PAGE_TITLES.get(page_id, page_id.title())
         self.setWindowTitle(f"Movie Recommendation System — {title}")
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self.image_loader.close()
         self.movie_service.close()
         if self._owned_session is not None:
             self._owned_session.close()

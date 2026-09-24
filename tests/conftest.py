@@ -12,6 +12,7 @@ from app.services.auth_service import AuthService
 from app.state.app_state import AppState
 from app.ui.app_window import MainWindow
 from app.ui.theme import apply_theme
+from tests.fakes import FakeMovieService
 
 
 @pytest.fixture()
@@ -45,11 +46,23 @@ def themed_app(qapp: QApplication) -> QApplication:
 
 
 @pytest.fixture()
-def main_window(qtbot, themed_app: QApplication, auth_service: AuthService, app_state: AppState) -> MainWindow:
+def movie_service() -> FakeMovieService:
+    return FakeMovieService()
+
+
+@pytest.fixture()
+def main_window(
+    qtbot,
+    themed_app: QApplication,
+    auth_service: AuthService,
+    app_state: AppState,
+    movie_service: FakeMovieService,
+) -> MainWindow:
     window = MainWindow(
         auth_service=auth_service,
         app_state=app_state,
         confirm_logout=lambda **_kwargs: True,
+        movie_service=movie_service,
     )
     qtbot.addWidget(window)
     window.show()

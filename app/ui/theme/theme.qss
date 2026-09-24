@@ -308,3 +308,16 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
 QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
     background: none;
 }}
+
+QComboBox QAbstractItemView {{
+    background-color: {SURFACE};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    selection-background-color: {SECONDARY};
+    selection-color: {TEXT_PRIMARY};
+    outline: none;
+}}
+
+QWidget#loadingWidget, QWidget#emptyState {{
+    background-color: transparent;
+}}
