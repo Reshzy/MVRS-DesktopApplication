@@ -321,3 +321,33 @@ QComboBox QAbstractItemView {{
 QWidget#loadingWidget, QWidget#emptyState {{
     background-color: transparent;
 }}
+
+QPushButton[selected="true"] {{
+    background-color: {ACCENT};
+    color: {ACCENT_TEXT};
+    border: 1px solid {ACCENT};
+}}
+
+QPushButton[selected="true"]:hover {{
+    background-color: {ACCENT_HOVER};
+    border-color: {ACCENT_HOVER};
+}}
+
+QLabel#movieDetailsBackdrop {{
+    background-color: {SURFACE};
+    border-radius: {RADIUS_CARD}px;
+}}
+
+QLabel#movieDetailsPoster {{
+    background-color: {SURFACE_RAISED};
+    border-radius: {RADIUS}px;
+}}
+
+QLabel#movieDetailsTitle {{
+    font-size: {TITLE_SIZE}px;
+    font-weight: {TITLE_WEIGHT};
+}}
+
+QLabel#movieDetailsStatus {{
+    color: {TEXT_SECONDARY};
+}}

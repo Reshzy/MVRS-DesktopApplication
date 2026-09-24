@@ -6,7 +6,7 @@ import pytest
 from app.api.exceptions import TMDBAPIError, TMDBConfigError, TMDBConnectionError, TMDBTimeoutError
 from app.api.tmdb_client import TMDB_BASE_URL, TMDBClient
 from app.config.settings import Settings
-from app.schemas.movie_schema import DiscoverFilters, MovieDetailsDTO, MoviePageDTO
+from app.schemas.movie_schema import DiscoverFilters, MovieDetailsBundle, MovieDetailsDTO, MoviePageDTO
 from app.services.movie_service import MovieService
 
 SAMPLE_MOVIE = {
@@ -85,6 +85,11 @@ def test_movie_details_and_credits() -> None:
     assert details.genres[0].name == "Drama"
     assert credits.director == "David Fincher"
     assert credits.cast[0].name == "Brad Pitt"
+
+    bundle = service.get_details_bundle(550)
+    assert isinstance(bundle, MovieDetailsBundle)
+    assert bundle.details.runtime == 139
+    assert bundle.credits.director == "David Fincher"
 
 
 def test_catalog_endpoints() -> None:

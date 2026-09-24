@@ -4,7 +4,16 @@ import time
 from datetime import date
 
 from app.api.exceptions import TMDBConnectionError
-from app.schemas.movie_schema import DiscoverFilters, GenreDTO, MoviePageDTO, MovieSummaryDTO
+from app.schemas.movie_schema import (
+    CastMemberDTO,
+    CreditsDTO,
+    DiscoverFilters,
+    GenreDTO,
+    MovieDetailsBundle,
+    MovieDetailsDTO,
+    MoviePageDTO,
+    MovieSummaryDTO,
+)
 
 
 def sample_movie(index: int = 1, title: str | None = None) -> MovieSummaryDTO:
@@ -22,6 +31,9 @@ class FakeMovieService:
     def __init__(self) -> None:
         self.search_calls: list[tuple[str, int]] = []
         self.discover_calls: list[DiscoverFilters] = []
+        self.details_calls: list[int] = []
+        self.credits_calls: list[int] = []
+        self.similar_calls: list[int] = []
         self.genre_calls = 0
         self.delay = 0.0
         self.fail = False
@@ -49,6 +61,48 @@ class FakeMovieService:
         if not query.strip():
             return MoviePageDTO()
         return self._page(page)
+
+    def get_movie_details(self, movie_id: int) -> MovieDetailsDTO:
+        self._maybe_delay()
+        self.details_calls.append(movie_id)
+        self._maybe_fail()
+        movie = next((item for item in self.movies if item.tmdb_id == movie_id), self.movies[0])
+        payload = movie.model_dump()
+        payload["runtime"] = 139
+        payload["original_language"] = movie.original_language or "en"
+        payload["genres"] = [GenreDTO(tmdb_genre_id=18, name="Drama")]
+        return MovieDetailsDTO(**payload)
+
+    def get_movie_credits(self, movie_id: int) -> CreditsDTO:
+        self._maybe_delay()
+        self.credits_calls.append(movie_id)
+        self._maybe_fail()
+        return CreditsDTO(
+            cast=[
+                CastMemberDTO(name="Brad Pitt", character="Tyler Durden"),
+                CastMemberDTO(name="Edward Norton", character="The Narrator"),
+            ],
+            director="David Fincher",
+        )
+
+    def get_similar_movies(self, movie_id: int) -> MoviePageDTO:
+        self._maybe_delay()
+        self.similar_calls.append(movie_id)
+        self._maybe_fail()
+        others = [item for item in self.movies if item.tmdb_id != movie_id]
+        return MoviePageDTO(page=1, total_pages=1, total_results=len(others), results=others)
+
+    def get_details_bundle(self, movie_id: int) -> MovieDetailsBundle:
+        details = self.get_movie_details(movie_id)
+        try:
+            credits = self.get_movie_credits(movie_id)
+        except Exception:
+            credits = CreditsDTO()
+        try:
+            similar = self.get_similar_movies(movie_id).results
+        except Exception:
+            similar = []
+        return MovieDetailsBundle(details=details, credits=credits, similar=similar)
 
     def discover_movies(self, filters: DiscoverFilters | dict | None = None) -> MoviePageDTO:
         self._maybe_delay()

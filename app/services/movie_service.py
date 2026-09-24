@@ -12,6 +12,7 @@ from app.schemas.movie_schema import (
     CreditsDTO,
     DiscoverFilters,
     GenreDTO,
+    MovieDetailsBundle,
     MovieDetailsDTO,
     MoviePageDTO,
     MovieSummaryDTO,
@@ -75,6 +76,20 @@ class MovieService:
         result = MoviePageDTO.from_tmdb(self._client.get_similar_movies(movie_id))
         self._cache_page(result)
         return result
+
+    def get_details_bundle(self, movie_id: int) -> MovieDetailsBundle:
+        details = self.get_movie_details(movie_id)
+        credits = CreditsDTO()
+        similar: list[MovieSummaryDTO] = []
+        try:
+            credits = self.get_movie_credits(movie_id)
+        except Exception:
+            logger.exception("Failed to load credits for tmdb_id=%s", movie_id)
+        try:
+            similar = self.get_similar_movies(movie_id).results
+        except Exception:
+            logger.exception("Failed to load similar movies for tmdb_id=%s", movie_id)
+        return MovieDetailsBundle(details=details, credits=credits, similar=similar)
 
     def discover_movies(self, filters: DiscoverFilters | dict | None = None) -> MoviePageDTO:
         result = MoviePageDTO.from_tmdb(self._client.discover_movies(filters))

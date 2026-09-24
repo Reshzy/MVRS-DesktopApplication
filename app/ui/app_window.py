@@ -5,9 +5,15 @@ from collections.abc import Callable
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
+from sqlalchemy.orm import Session
+
 from app.database.session import SessionLocal
 from app.services.auth_service import AuthService
+from app.services.history_service import HistoryService
+from app.services.interaction_service import InteractionService
 from app.services.movie_service import MovieService
+from app.services.rating_service import RatingService
+from app.services.watchlist_service import WatchlistService
 from app.state.app_state import AppState
 from app.ui.dialogs.confirm_dialog import ConfirmDialog
 from app.ui.pages.dashboard_page import DashboardPage
@@ -64,6 +70,11 @@ class MainWindow(QMainWindow):
         app_state: AppState | None = None,
         confirm_logout: ConfirmFn | None = None,
         movie_service: MovieService | None = None,
+        session: Session | None = None,
+        watchlist_service: WatchlistService | None = None,
+        history_service: HistoryService | None = None,
+        rating_service: RatingService | None = None,
+        interaction_service: InteractionService | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("mainWindow")
@@ -76,11 +87,21 @@ class MainWindow(QMainWindow):
         self._owned_session = None
         if auth_service is None:
             self._owned_session = SessionLocal()
-            self.auth_service = AuthService(self._owned_session, self.app_state)
-            self.movie_service = movie_service or MovieService(session=self._owned_session)
+            session = self._owned_session
+            self.auth_service = AuthService(session, self.app_state)
+            self.movie_service = movie_service or MovieService(session=session)
         else:
             self.auth_service = auth_service
             self.movie_service = movie_service or MovieService(cache_enabled=False)
+            if session is None:
+                session = getattr(auth_service, "_session", None)
+
+        self.watchlist_service = watchlist_service or (WatchlistService(session) if session is not None else None)
+        self.history_service = history_service or (HistoryService(session) if session is not None else None)
+        self.rating_service = rating_service or (RatingService(session) if session is not None else None)
+        self.interaction_service = interaction_service or (
+            InteractionService(session) if session is not None else None
+        )
 
         self.image_loader = ImageLoader(self)
         self.sidebar = Sidebar(self)
@@ -95,7 +116,15 @@ class MainWindow(QMainWindow):
         self.onboarding_page = OnboardingPage(self)
         self.dashboard_page = DashboardPage(self)
         self.discover_page = DiscoverPage(self.movie_service, self.image_loader, self)
-        self.movie_details_page = MovieDetailsPage(self)
+        self.movie_details_page = MovieDetailsPage(
+            self.movie_service,
+            self.image_loader,
+            self.watchlist_service,
+            self.history_service,
+            self.rating_service,
+            self.interaction_service,
+            self,
+        )
         self.recommendations_page = RecommendationsPage(self)
         self.watchlist_page = WatchlistPage(self)
         self.history_page = HistoryPage(self)
@@ -144,7 +173,7 @@ class MainWindow(QMainWindow):
         self.topbar.profile_requested.connect(lambda: self.navigate("profile"))
         self.topbar.search_requested.connect(self.search_from_topbar)
         self.discover_page.movie_selected.connect(self.show_movie_details)
-        self.movie_details_page.back_requested.connect(self.show_discover)
+        self.movie_details_page.back_requested.connect(self.return_from_details)
 
         self.show_welcome()
 
@@ -188,6 +217,13 @@ class MainWindow(QMainWindow):
     def show_movie_details(self, movie: object) -> None:
         self.app_state.selected_movie = movie
         self.navigate("movie_details")
+
+    def return_from_details(self) -> None:
+        previous = self.app_state.previous_page
+        if previous in self._pages and previous != "movie_details":
+            self.navigate(previous)
+            return
+        self.show_discover()
 
     def logout(self) -> None:
         confirmed = self._confirm_logout(

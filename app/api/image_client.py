@@ -15,6 +15,7 @@ logger = logging.getLogger(LOGGER_NAME)
 
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p"
 DEFAULT_POSTER_SIZE = "w342"
+DEFAULT_BACKDROP_SIZE = "w780"
 DEFAULT_TIMEOUT_SECONDS = 10.0
 
 

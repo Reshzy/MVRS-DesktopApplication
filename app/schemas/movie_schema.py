@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import date
 
 from pydantic import BaseModel, Field
@@ -94,6 +95,13 @@ class CreditsDTO(BaseModel):
             None,
         )
         return cls(cast=cast[:12], director=director)
+
+
+@dataclass
+class MovieDetailsBundle:
+    details: MovieDetailsDTO
+    credits: CreditsDTO = field(default_factory=CreditsDTO)
+    similar: list[MovieSummaryDTO] = field(default_factory=list)
 
 
 class MoviePageDTO(BaseModel):
