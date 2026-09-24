@@ -1,0 +1,230 @@
+QMainWindow, QWidget#mainWindow, QStackedWidget {{
+    background-color: {BACKGROUND};
+    color: {TEXT_PRIMARY};
+}}
+
+QWidget {{
+    background-color: transparent;
+    color: {TEXT_PRIMARY};
+}}
+
+QLabel {{
+    background-color: transparent;
+    color: {TEXT_PRIMARY};
+}}
+
+QLabel[role="title"] {{
+    font-size: {TITLE_SIZE}px;
+    font-weight: {TITLE_WEIGHT};
+    color: {TEXT_PRIMARY};
+}}
+
+QLabel[role="heading"] {{
+    font-size: {HEADING_SIZE}px;
+    font-weight: {HEADING_WEIGHT};
+    color: {TEXT_PRIMARY};
+}}
+
+QLabel[role="subheading"] {{
+    font-size: {SUBHEADING_SIZE}px;
+    font-weight: {HEADING_WEIGHT};
+    color: {TEXT_PRIMARY};
+}}
+
+QLabel[role="body"] {{
+    font-size: {BODY_SIZE}px;
+    font-weight: {BODY_WEIGHT};
+    color: {TEXT_PRIMARY};
+}}
+
+QLabel[role="muted"], QLabel[role="subtitle"] {{
+    font-size: {BODY_SIZE}px;
+    color: {TEXT_SECONDARY};
+}}
+
+QLabel[role="caption"] {{
+    font-size: {CAPTION_SIZE}px;
+    color: {TEXT_MUTED};
+}}
+
+QPushButton {{
+    border: 1px solid {BORDER};
+    border-radius: {RADIUS}px;
+    padding: {MD}px {LG}px;
+    background-color: {SECONDARY};
+    color: {TEXT_PRIMARY};
+}}
+
+QPushButton:hover {{
+    background-color: {SECONDARY_HOVER};
+}}
+
+QPushButton:pressed {{
+    background-color: {SECONDARY_PRESSED};
+}}
+
+QPushButton:focus {{
+    border: 1px solid {FOCUS};
+}}
+
+QPushButton:disabled {{
+    color: {TEXT_MUTED};
+    background-color: {MUTED};
+    border-color: {BORDER};
+}}
+
+QPushButton[variant="primary"] {{
+    background-color: {ACCENT};
+    color: {ACCENT_TEXT};
+    border: 1px solid {ACCENT};
+    font-weight: {HEADING_WEIGHT};
+}}
+
+QPushButton[variant="primary"]:hover {{
+    background-color: {ACCENT_HOVER};
+    border-color: {ACCENT_HOVER};
+}}
+
+QPushButton[variant="primary"]:pressed {{
+    background-color: {ACCENT_PRESSED};
+    border-color: {ACCENT_PRESSED};
+}}
+
+QPushButton[variant="secondary"] {{
+    background-color: {SECONDARY};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+}}
+
+QPushButton[variant="secondary"]:hover {{
+    background-color: {SECONDARY_HOVER};
+}}
+
+QPushButton[variant="secondary"]:pressed {{
+    background-color: {SECONDARY_PRESSED};
+}}
+
+QPushButton[variant="danger"] {{
+    background-color: {DANGER};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {DANGER};
+}}
+
+QPushButton[variant="danger"]:hover {{
+    background-color: {DANGER_HOVER};
+    border-color: {DANGER_HOVER};
+}}
+
+QPushButton[variant="danger"]:pressed {{
+    background-color: {DANGER_PRESSED};
+    border-color: {DANGER_PRESSED};
+}}
+
+QPushButton[variant="muted"] {{
+    background-color: {MUTED};
+    color: {TEXT_SECONDARY};
+    border: 1px solid {BORDER};
+}}
+
+QPushButton[variant="muted"]:hover {{
+    background-color: {MUTED_HOVER};
+    color: {TEXT_PRIMARY};
+}}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QSpinBox {{
+    background-color: {SURFACE};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    border-radius: {RADIUS}px;
+    padding: {MD}px {LG}px;
+    selection-background-color: {ACCENT};
+    selection-color: {ACCENT_TEXT};
+}}
+
+QLineEdit:hover, QTextEdit:hover, QPlainTextEdit:hover, QComboBox:hover {{
+    border-color: {TEXT_MUTED};
+}}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus {{
+    border: 1px solid {FOCUS};
+}}
+
+QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled {{
+    color: {TEXT_MUTED};
+    background-color: {SURFACE_RAISED};
+}}
+
+QFrame[role="card"] {{
+    background-color: {SURFACE};
+    border: 1px solid {BORDER};
+    border-radius: {RADIUS_CARD}px;
+}}
+
+QFrame[role="sidebar"], QWidget#sidebar {{
+    background-color: {SURFACE};
+    border-right: 1px solid {BORDER};
+    min-width: {SIDEBAR_WIDTH}px;
+    max-width: {SIDEBAR_WIDTH}px;
+}}
+
+QDialog, QMessageBox {{
+    background-color: {SURFACE};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+}}
+
+QDialog QLabel, QMessageBox QLabel {{
+    color: {TEXT_PRIMARY};
+}}
+
+QScrollArea {{
+    border: none;
+    background-color: transparent;
+}}
+
+QScrollBar:vertical {{
+    background: {SCROLL_TRACK};
+    width: 10px;
+    margin: 0;
+    border: none;
+}}
+
+QScrollBar::handle:vertical {{
+    background: {SCROLL_THUMB};
+    min-height: 24px;
+    border-radius: 5px;
+}}
+
+QScrollBar::handle:vertical:hover {{
+    background: {TEXT_MUTED};
+}}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0;
+}}
+
+QScrollBar:horizontal {{
+    background: {SCROLL_TRACK};
+    height: 10px;
+    margin: 0;
+    border: none;
+}}
+
+QScrollBar::handle:horizontal {{
+    background: {SCROLL_THUMB};
+    min-width: 24px;
+    border-radius: 5px;
+}}
+
+QScrollBar::handle:horizontal:hover {{
+    background: {TEXT_MUTED};
+}}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+    width: 0;
+}}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
+    background: none;
+}}

@@ -9,10 +9,12 @@ class WelcomePage(QWidget):
 
         title = QLabel("Movie Recommendation System")
         title.setObjectName("welcomeTitle")
+        title.setProperty("role", "title")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         subtitle = QLabel("Welcome. Full onboarding and discovery arrive in later phases.")
         subtitle.setObjectName("welcomeSubtitle")
+        subtitle.setProperty("role", "subtitle")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         layout = QVBoxLayout(self)
