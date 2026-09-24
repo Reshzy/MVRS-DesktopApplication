@@ -33,9 +33,10 @@ from app.ui.widgets.flow_layout import FlowLayout
 from app.ui.widgets.loading_widget import LoadingWidget
 from app.ui.widgets.movie_card import MovieCard, format_rating, format_release_year
 from app.ui.widgets.poster_placeholder import poster_placeholder
+from app.ui.widgets.rating_widget import RatingWidget
 from app.ui.workers.image_worker import ImageLoader
 from app.ui.workers.task_runner import TaskRunner
-from app.utils.constants import DISLIKE, LANGUAGE_NAMES, LIKE, MAX_RATING, MIN_RATING, NOT_INTERESTED
+from app.utils.constants import DISLIKE, LANGUAGE_NAMES, LIKE, MAX_RATING, NOT_INTERESTED
 from app.utils.logging_config import LOGGER_NAME
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -223,19 +224,16 @@ class MovieDetailsPage(QWidget):
         rate_label.setObjectName("movieDetailsRateLabel")
         apply_property(rate_label, "role", "caption")
 
-        self.star_buttons: list[QPushButton] = []
+        self.rating_widget = RatingWidget(parent=self)
+        self.rating_widget.setObjectName("movieDetailsRating")
+        self.rating_widget.ratingChanged.connect(self._rate)
+        self.star_buttons = self.rating_widget.stars
+
         stars = QHBoxLayout()
         stars.setContentsMargins(0, 0, 0, 0)
         stars.setSpacing(SM)
         stars.addWidget(rate_label)
-        for value in range(MIN_RATING, MAX_RATING + 1):
-            button = QPushButton("★")
-            button.setObjectName(f"movieDetailsRate{value}")
-            button.setFixedWidth(40)
-            apply_property(button, "variant", "secondary")
-            button.clicked.connect(lambda _checked=False, rating=value: self._rate(rating))
-            self.star_buttons.append(button)
-            stars.addWidget(button)
+        stars.addWidget(self.rating_widget)
         stars.addStretch()
 
         self.status_label = QLabel("")
@@ -460,8 +458,7 @@ class MovieDetailsPage(QWidget):
         apply_property(self.like_button, "selected", "true" if state.liked else "false")
         apply_property(self.dislike_button, "selected", "true" if state.disliked else "false")
         apply_property(self.not_interested_button, "selected", "true" if state.not_interested else "false")
-        for index, button in enumerate(self.star_buttons, start=1):
-            apply_property(button, "selected", "true" if state.rating is not None and index <= state.rating else "false")
+        self.rating_widget.set_rating(state.rating)
         if not signed_in:
             self.status_label.setText(SIGN_IN_MESSAGE)
 
@@ -510,12 +507,14 @@ class MovieDetailsPage(QWidget):
         user_id = self._require_user()
         movie = self._current_movie()
         if user_id is None or movie is None or self._rating_service is None:
+            self.rating_widget.set_rating(self._user_state.rating)
             return
         try:
             self._rating_service.set_rating(user_id, movie, rating)
             self.status_label.setText(f"Rated {rating} of {MAX_RATING}.")
         except Exception as exc:
             logger.exception("Rating update failed")
+            self.rating_widget.set_rating(self._user_state.rating)
             self.status_label.setText(self._action_error(exc, "Could not save your rating."))
             return
         self._refresh_user_state()

@@ -247,6 +247,33 @@ QPushButton[variant="nav"]:checked {{
     color: {ACCENT};
 }}
 
+QPushButton[role="star"] {{
+    background-color: transparent;
+    border: none;
+    color: {TEXT_MUTED};
+    font-size: 22px;
+    padding: {XS}px {SM}px;
+}}
+
+QPushButton[role="star"]:hover, QPushButton[role="star"]:pressed, QPushButton[role="star"]:focus {{
+    background-color: transparent;
+    border: none;
+    color: {ACCENT_HOVER};
+}}
+
+QPushButton[role="star"][filled="true"],
+QPushButton[role="star"][preview="true"] {{
+    color: {ACCENT};
+}}
+
+QPushButton[role="star"][preview="true"] {{
+    color: {ACCENT_HOVER};
+}}
+
+QWidget#ratingWidget {{
+    background-color: transparent;
+}}
+
 QDialog, QMessageBox {{
     background-color: {SURFACE};
     color: {TEXT_PRIMARY};

@@ -15,4 +15,5 @@ def test_stylesheet_uses_central_tokens() -> None:
     assert "QScrollBar:vertical" in stylesheet
     assert "QDialog" in stylesheet
     assert "sidebar" in stylesheet
+    assert 'QPushButton[role="star"]' in stylesheet
     assert tokens["BACKGROUND"] == BACKGROUND

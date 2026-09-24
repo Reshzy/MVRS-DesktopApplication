@@ -12,6 +12,8 @@ class ConfirmDialog(QDialog):
         confirm_label: str = "Confirm",
         cancel_label: str = "Cancel",
         parent: QWidget | None = None,
+        *,
+        confirm_variant: str = "danger",
     ) -> None:
         super().__init__(parent)
         self.setObjectName("confirmDialog")
@@ -20,15 +22,17 @@ class ConfirmDialog(QDialog):
         self.setMinimumWidth(360)
 
         heading = QLabel(title)
+        heading.setObjectName("confirmDialogHeading")
         apply_property(heading, "role", "heading")
 
         body = QLabel(message)
+        body.setObjectName("confirmDialogMessage")
         apply_property(body, "role", "body")
         body.setWordWrap(True)
 
         self.confirm_button = QPushButton(confirm_label)
         self.confirm_button.setObjectName("confirmDialogAccept")
-        apply_property(self.confirm_button, "variant", "danger")
+        apply_property(self.confirm_button, "variant", confirm_variant)
         self.confirm_button.clicked.connect(self.accept)
 
         self.cancel_button = QPushButton(cancel_label)
@@ -57,6 +61,14 @@ class ConfirmDialog(QDialog):
         message: str = "Are you sure?",
         confirm_label: str = "Confirm",
         cancel_label: str = "Cancel",
+        confirm_variant: str = "danger",
     ) -> bool:
-        dialog = cls(title, message, confirm_label, cancel_label, parent)
+        dialog = cls(
+            title,
+            message,
+            confirm_label,
+            cancel_label,
+            parent,
+            confirm_variant=confirm_variant,
+        )
         return dialog.exec() == QDialog.DialogCode.Accepted
