@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 from app.ui.theme import colors, fonts, spacing
 
@@ -27,3 +27,10 @@ def apply_theme(app: QApplication) -> None:
     font.setPixelSize(fonts.BODY_SIZE)
     app.setFont(font)
     app.setStyleSheet(load_stylesheet())
+
+
+def apply_property(widget: QWidget, name: str, value: str) -> None:
+    widget.setProperty(name, value)
+    style = widget.style()
+    style.unpolish(widget)
+    style.polish(widget)

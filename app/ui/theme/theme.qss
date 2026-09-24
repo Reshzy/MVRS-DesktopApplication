@@ -47,6 +47,11 @@ QLabel[role="caption"] {{
     color: {TEXT_MUTED};
 }}
 
+QLabel[role="error"] {{
+    font-size: {BODY_SIZE}px;
+    color: {DANGER};
+}}
+
 QPushButton {{
     border: 1px solid {BORDER};
     border-radius: {RADIUS}px;
@@ -129,6 +134,23 @@ QPushButton[variant="muted"] {{
 QPushButton[variant="muted"]:hover {{
     background-color: {MUTED_HOVER};
     color: {TEXT_PRIMARY};
+}}
+
+QPushButton[variant="link"] {{
+    background-color: transparent;
+    border: none;
+    color: {ACCENT};
+    padding: {XS}px {SM}px;
+}}
+
+QPushButton[variant="link"]:hover {{
+    color: {ACCENT_HOVER};
+    background-color: transparent;
+}}
+
+QPushButton[variant="link"]:pressed {{
+    color: {ACCENT_PRESSED};
+    background-color: transparent;
 }}
 
 QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QSpinBox {{

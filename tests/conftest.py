@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from PySide6.QtWidgets import QApplication
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -9,6 +10,8 @@ from app.database.base import Base
 from app.models import load_models
 from app.services.auth_service import AuthService
 from app.state.app_state import AppState
+from app.ui.app_window import MainWindow
+from app.ui.theme import apply_theme
 
 
 @pytest.fixture()
@@ -33,3 +36,17 @@ def app_state() -> AppState:
 @pytest.fixture()
 def auth_service(db_session: Session, app_state: AppState) -> AuthService:
     return AuthService(db_session, app_state)
+
+
+@pytest.fixture()
+def themed_app(qapp: QApplication) -> QApplication:
+    apply_theme(qapp)
+    return qapp
+
+
+@pytest.fixture()
+def main_window(qtbot, themed_app: QApplication, auth_service: AuthService, app_state: AppState) -> MainWindow:
+    window = MainWindow(auth_service=auth_service, app_state=app_state)
+    qtbot.addWidget(window)
+    window.show()
+    return window
