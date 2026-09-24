@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Callable
+from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -17,6 +19,7 @@ from app.schemas.movie_schema import (
     MoviePageDTO,
     MovieSummaryDTO,
 )
+from app.utils.constants import DASHBOARD_RECENT_DAYS, HIGHLY_RATED_THRESHOLD
 from app.utils.logging_config import LOGGER_NAME
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -37,6 +40,7 @@ class MovieService:
             MovieRepository(session) if session is not None else None
         )
         self._cache_enabled = cache_enabled
+        self._cache_lock = threading.Lock()
 
     def close(self) -> None:
         self._client.close()
@@ -96,6 +100,27 @@ class MovieService:
         self._cache_page(result)
         return result
 
+    def get_recent_movies(self, page: int = 1) -> MoviePageDTO:
+        today = date.today()
+        start = today - timedelta(days=DASHBOARD_RECENT_DAYS)
+        return self.discover_movies(
+            DiscoverFilters(
+                page=page,
+                sort_by="primary_release_date.desc",
+                primary_release_date_gte=start.isoformat(),
+                primary_release_date_lte=today.isoformat(),
+            )
+        )
+
+    def get_highly_rated_movies(self, page: int = 1) -> MoviePageDTO:
+        return self.discover_movies(
+            DiscoverFilters(
+                page=page,
+                sort_by="vote_average.desc",
+                vote_average_gte=HIGHLY_RATED_THRESHOLD,
+            )
+        )
+
     def _cache_page(self, page: MoviePageDTO) -> None:
         self._cache_movies(page.results)
 
@@ -116,15 +141,18 @@ class MovieService:
         if not self._cache_enabled:
             return
         try:
-            if self._repository is not None:
-                action(self._repository)
-                if self._session is not None:
-                    self._session.commit()
-                return
-            with session_scope() as session:
-                action(MovieRepository(session))
+            with self._cache_lock:
+                if self._repository is not None:
+                    action(self._repository)
+                    if self._session is not None:
+                        self._session.commit()
+                    return
+                with session_scope() as session:
+                    action(MovieRepository(session))
         except Exception:
             logger.exception("Failed to cache movie metadata")
             if self._session is not None:
-                self._session.rollback()
-            raise
+                try:
+                    self._session.rollback()
+                except Exception:
+                    logger.exception("Failed to roll back movie cache session")

@@ -1,3 +1,4 @@
+from app.ui.widgets.dashboard_row import DashboardRow
 from app.ui.widgets.empty_state import EmptyState
 from app.ui.widgets.filter_panel import FilterPanel
 from app.ui.widgets.flow_layout import FlowLayout
@@ -12,6 +13,7 @@ from app.ui.widgets.sidebar import Sidebar
 from app.ui.widgets.topbar import TopBar
 
 __all__ = [
+    "DashboardRow",
     "EmptyState",
     "FilterPanel",
     "FlowLayout",

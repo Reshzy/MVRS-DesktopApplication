@@ -157,6 +157,13 @@ class DiscoverPage(QWidget):
             self.search_bar.set_text(pending.strip())
             self._on_search(pending.strip())
             return
+        sort_by = app_state.active_filters.pop("sort_by", None)
+        if isinstance(sort_by, str) and sort_by:
+            index = self.filters.sort_combo.findData(sort_by)
+            if index >= 0:
+                self.filters.sort_combo.setCurrentIndex(index)
+            self._request_catalog("discover", "", self.filters.to_filters(1))
+            return
         if not self._has_loaded:
             self._request_catalog("discover", "", self.filters.to_filters(1))
 

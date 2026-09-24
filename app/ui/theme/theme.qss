@@ -395,3 +395,21 @@ QLabel#libraryTileMeta, QLabel#recommendationReason {{
 QPushButton#libraryTileRemoveButton, QPushButton#libraryTileWatchedButton {{
     padding: {SM}px {MD}px;
 }}
+
+QWidget#dashboardPage, QWidget#dashboardRows {{
+    background-color: transparent;
+}}
+
+QLabel#dashboardGreeting {{
+    font-size: {TITLE_SIZE}px;
+    font-weight: {TITLE_WEIGHT};
+}}
+
+QLabel#dashboardSubtitle {{
+    color: {TEXT_SECONDARY};
+}}
+
+QScrollArea#dashboardScroll {{
+    background-color: transparent;
+    border: none;
+}}

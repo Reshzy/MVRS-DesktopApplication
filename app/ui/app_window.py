@@ -125,7 +125,13 @@ class MainWindow(QMainWindow):
         self.login_page = LoginPage(self.auth_service, self)
         self.register_page = RegisterPage(self.auth_service, self)
         self.onboarding_page = OnboardingPage(self.user_service, self.movie_service, self)
-        self.dashboard_page = DashboardPage(self)
+        self.dashboard_page = DashboardPage(
+            self.movie_service,
+            self.image_loader,
+            self.recommendation_service,
+            self.history_service,
+            self,
+        )
         self.discover_page = DiscoverPage(self.movie_service, self.image_loader, self)
         self.movie_details_page = MovieDetailsPage(
             self.movie_service,
@@ -195,6 +201,10 @@ class MainWindow(QMainWindow):
         self.sidebar.logout_requested.connect(self.logout)
         self.topbar.profile_requested.connect(lambda: self.navigate("profile"))
         self.topbar.search_requested.connect(self.search_from_topbar)
+        self.dashboard_page.movie_selected.connect(self.show_movie_details)
+        self.dashboard_page.search_requested.connect(self.search_from_topbar)
+        self.dashboard_page.profile_requested.connect(lambda: self.navigate("profile"))
+        self.dashboard_page.view_all_requested.connect(self._on_dashboard_view_all)
         self.discover_page.movie_selected.connect(self.show_movie_details)
         self.recommendations_page.movie_selected.connect(self.show_movie_details)
         self.watchlist_page.movie_selected.connect(self.show_movie_details)
@@ -255,6 +265,22 @@ class MainWindow(QMainWindow):
     def search_from_topbar(self, query: str) -> None:
         self.app_state.active_filters["query"] = query
         self.show_discover()
+
+    def _on_dashboard_view_all(self, section_id: str) -> None:
+        if section_id == "recommended":
+            self.navigate("recommendations")
+            return
+        if section_id == "continue":
+            if self.app_state.current_user is not None:
+                self.navigate("history")
+                return
+            self.navigate("discover")
+            return
+        if section_id == "recent":
+            self.app_state.active_filters["sort_by"] = "primary_release_date.desc"
+        elif section_id in {"popular", "trending"}:
+            self.app_state.active_filters["sort_by"] = "popularity.desc"
+        self.navigate("discover")
 
     def show_movie_details(self, movie: object) -> None:
         self.app_state.selected_movie = movie

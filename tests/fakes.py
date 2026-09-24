@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from datetime import date
+from datetime import date, timedelta
 
 from app.api.exceptions import TMDBConnectionError
 from app.schemas.movie_schema import (
@@ -42,6 +42,7 @@ class FakeMovieService:
         self.genre_calls = 0
         self.delay = 0.0
         self.fail = False
+        self.fail_methods: set[str] = set()
         self.empty = False
         self.total_pages = 2
         self.genres = [
@@ -59,13 +60,13 @@ class FakeMovieService:
     def get_genres(self) -> list[GenreDTO]:
         self._maybe_delay()
         self.genre_calls += 1
-        self._maybe_fail()
+        self._maybe_fail("get_genres")
         return list(self.genres)
 
     def search_movies(self, query: str, page: int = 1) -> MoviePageDTO:
         self._maybe_delay()
         self.search_calls.append((query, page))
-        self._maybe_fail()
+        self._maybe_fail("search_movies")
         if not query.strip():
             return MoviePageDTO()
         return self._page(page)
@@ -73,7 +74,7 @@ class FakeMovieService:
     def get_movie_details(self, movie_id: int) -> MovieDetailsDTO:
         self._maybe_delay()
         self.details_calls.append(movie_id)
-        self._maybe_fail()
+        self._maybe_fail("get_movie_details")
         movie = next((item for item in self.movies if item.tmdb_id == movie_id), self.movies[0])
         payload = movie.model_dump()
         payload["runtime"] = 139
@@ -84,7 +85,7 @@ class FakeMovieService:
     def get_movie_credits(self, movie_id: int) -> CreditsDTO:
         self._maybe_delay()
         self.credits_calls.append(movie_id)
-        self._maybe_fail()
+        self._maybe_fail("get_movie_credits")
         return CreditsDTO(
             cast=[
                 CastMemberDTO(name="Brad Pitt", character="Tyler Durden"),
@@ -96,19 +97,19 @@ class FakeMovieService:
     def get_popular_movies(self, page: int = 1) -> MoviePageDTO:
         self._maybe_delay()
         self.popular_calls.append(page)
-        self._maybe_fail()
+        self._maybe_fail("get_popular_movies")
         return self._page(page)
 
     def get_trending_movies(self) -> MoviePageDTO:
         self._maybe_delay()
         self.trending_calls += 1
-        self._maybe_fail()
+        self._maybe_fail("get_trending_movies")
         return self._page(1)
 
     def get_similar_movies(self, movie_id: int) -> MoviePageDTO:
         self._maybe_delay()
         self.similar_calls.append(movie_id)
-        self._maybe_fail()
+        self._maybe_fail("get_similar_movies")
         others = [item for item in self.movies if item.tmdb_id != movie_id]
         return MoviePageDTO(page=1, total_pages=1, total_results=len(others), results=others)
 
@@ -128,8 +129,29 @@ class FakeMovieService:
         self._maybe_delay()
         payload = filters if isinstance(filters, DiscoverFilters) else DiscoverFilters.model_validate(filters or {})
         self.discover_calls.append(payload)
-        self._maybe_fail()
+        self._maybe_fail("discover_movies")
         return self._page(payload.page)
+
+    def get_recent_movies(self, page: int = 1) -> MoviePageDTO:
+        self._maybe_delay()
+        self._maybe_fail("get_recent_movies")
+        today = date.today()
+        start = today - timedelta(days=365)
+        payload = DiscoverFilters(
+            page=page,
+            sort_by="primary_release_date.desc",
+            primary_release_date_gte=start.isoformat(),
+            primary_release_date_lte=today.isoformat(),
+        )
+        self.discover_calls.append(payload)
+        return self._page(page)
+
+    def get_highly_rated_movies(self, page: int = 1) -> MoviePageDTO:
+        self._maybe_delay()
+        self._maybe_fail("get_highly_rated_movies")
+        payload = DiscoverFilters(page=page, sort_by="vote_average.desc", vote_average_gte=7.0)
+        self.discover_calls.append(payload)
+        return self._page(page)
 
     def _page(self, page: int) -> MoviePageDTO:
         if self.empty:
@@ -145,6 +167,6 @@ class FakeMovieService:
         if self.delay:
             time.sleep(self.delay)
 
-    def _maybe_fail(self) -> None:
-        if self.fail:
+    def _maybe_fail(self, method: str = "") -> None:
+        if self.fail or method in self.fail_methods:
             raise TMDBConnectionError("Could not reach the movie service. Check your internet connection.")

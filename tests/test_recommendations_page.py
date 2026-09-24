@@ -39,11 +39,15 @@ def _open_recommendations(main_window: MainWindow, qtbot, *, wait_for_cards: boo
 
 def test_guest_sees_sign_in_prompt(main_window: MainWindow, movie_service: FakeMovieService, qtbot) -> None:
     qtbot.mouseClick(main_window.welcome_page.guest_button, Qt.MouseButton.LeftButton)
+    dashboard = main_window.dashboard_page
+    popular_row = dashboard.row("popular")
+    qtbot.waitUntil(lambda: popular_row.states.currentWidget() is popular_row.scroll, timeout=4000)
+    before_popular = list(movie_service.popular_calls)
     _open_recommendations(main_window, qtbot, wait_for_cards=False)
     page = main_window.recommendations_page
     assert page.states.currentWidget() is page.guest
     assert "sign in" in page.guest.title_label.text().lower()
-    assert movie_service.popular_calls == []
+    assert movie_service.popular_calls == before_popular
     assert page.cards == []
 
 
