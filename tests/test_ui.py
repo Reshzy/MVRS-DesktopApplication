@@ -52,13 +52,34 @@ def test_successful_register_opens_onboarding(main_window: MainWindow, qtbot) ->
     assert main_window.app_state.current_user.email == "ada@example.com"
 
 
-def test_successful_login_opens_dashboard(main_window: MainWindow, auth_service, qtbot) -> None:
+def test_login_before_onboarding_opens_onboarding(main_window: MainWindow, auth_service, qtbot) -> None:
     auth_service.register(
         name="Ada Lovelace",
         email="ada@example.com",
         password="password123",
         confirm_password="password123",
     )
+    main_window.app_state.clear_current_user()
+
+    qtbot.mouseClick(main_window.welcome_page.login_button, Qt.MouseButton.LeftButton)
+    main_window.login_page.email_input.setText("ada@example.com")
+    main_window.login_page.password_field.set_text("password123")
+    qtbot.mouseClick(main_window.login_page.submit_button, Qt.MouseButton.LeftButton)
+
+    assert main_window.stack.currentWidget() is main_window.onboarding_page
+    assert main_window.app_state.current_user is not None
+    assert main_window.app_state.current_user.onboarding_completed is False
+
+
+def test_successful_login_opens_dashboard(main_window: MainWindow, auth_service, db_session, qtbot) -> None:
+    user = auth_service.register(
+        name="Ada Lovelace",
+        email="ada@example.com",
+        password="password123",
+        confirm_password="password123",
+    )
+    user.onboarding_completed = True
+    db_session.commit()
     main_window.app_state.clear_current_user()
 
     qtbot.mouseClick(main_window.welcome_page.login_button, Qt.MouseButton.LeftButton)

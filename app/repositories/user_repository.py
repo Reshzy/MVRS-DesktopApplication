@@ -19,3 +19,8 @@ class UserRepository:
         self._session.add(user)
         self._session.flush()
         return user
+
+    def set_onboarding_completed(self, user: User, completed: bool = True) -> User:
+        user.onboarding_completed = completed
+        self._session.flush()
+        return user

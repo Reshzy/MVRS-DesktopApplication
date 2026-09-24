@@ -349,6 +349,11 @@ QWidget#loadingWidget, QWidget#emptyState {{
     background-color: transparent;
 }}
 
+QPushButton[variant="chip"] {{
+    padding: {SM}px {MD}px;
+    border-radius: 16px;
+}}
+
 QPushButton[selected="true"] {{
     background-color: {ACCENT};
     color: {ACCENT_TEXT};

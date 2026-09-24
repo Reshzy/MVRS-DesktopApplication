@@ -13,6 +13,7 @@ from app.services.history_service import HistoryService
 from app.services.interaction_service import InteractionService
 from app.services.movie_service import MovieService
 from app.services.rating_service import RatingService
+from app.services.user_service import UserService
 from app.services.watchlist_service import WatchlistService
 from app.state.app_state import AppState
 from app.ui.dialogs.confirm_dialog import ConfirmDialog
@@ -76,6 +77,7 @@ class MainWindow(QMainWindow):
         history_service: HistoryService | None = None,
         rating_service: RatingService | None = None,
         interaction_service: InteractionService | None = None,
+        user_service: UserService | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("mainWindow")
@@ -103,6 +105,7 @@ class MainWindow(QMainWindow):
         self.interaction_service = interaction_service or (
             InteractionService(session) if session is not None else None
         )
+        self.user_service = user_service or (UserService(session) if session is not None else None)
 
         self.image_loader = ImageLoader(self)
         self.sidebar = Sidebar(self)
@@ -114,7 +117,7 @@ class MainWindow(QMainWindow):
         self.welcome_page = WelcomePage(self)
         self.login_page = LoginPage(self.auth_service, self)
         self.register_page = RegisterPage(self.auth_service, self)
-        self.onboarding_page = OnboardingPage(self)
+        self.onboarding_page = OnboardingPage(self.user_service, self.movie_service, self)
         self.dashboard_page = DashboardPage(self)
         self.discover_page = DiscoverPage(self.movie_service, self.image_loader, self)
         self.movie_details_page = MovieDetailsPage(
@@ -135,7 +138,7 @@ class MainWindow(QMainWindow):
         )
         self.history_page = HistoryPage(self.history_service, self.image_loader, self)
         self.insights_page = InsightsPage(self)
-        self.profile_page = ProfilePage(self)
+        self.profile_page = ProfilePage(self.user_service, self)
 
         self._register_page("welcome", self.welcome_page)
         self._register_page("login", self.login_page)
@@ -169,10 +172,13 @@ class MainWindow(QMainWindow):
         self.welcome_page.login_requested.connect(self.show_login)
         self.welcome_page.register_requested.connect(self.show_register)
         self.welcome_page.guest_requested.connect(self.show_guest_dashboard)
-        self.login_page.login_succeeded.connect(self.show_dashboard)
+        self.login_page.login_succeeded.connect(self.show_authenticated_home)
         self.login_page.register_requested.connect(self.show_register)
         self.login_page.back_requested.connect(self.show_welcome)
         self.register_page.register_succeeded.connect(self.show_onboarding)
+        self.onboarding_page.completed.connect(self._finish_onboarding)
+        self.onboarding_page.cancelled.connect(self.show_profile)
+        self.profile_page.edit_preferences_requested.connect(self.show_onboarding)
         self.register_page.login_requested.connect(self.show_login)
         self.sidebar.navigate_requested.connect(self.navigate)
         self.sidebar.logout_requested.connect(self.logout)
@@ -208,8 +214,24 @@ class MainWindow(QMainWindow):
     def show_onboarding(self) -> None:
         self.navigate("onboarding")
 
+    def show_authenticated_home(self) -> None:
+        user = self.app_state.current_user
+        if user is not None and not user.onboarding_completed:
+            self.show_onboarding()
+            return
+        self.show_dashboard()
+
     def show_dashboard(self) -> None:
         self.navigate("home")
+
+    def show_profile(self) -> None:
+        self.navigate("profile")
+
+    def _finish_onboarding(self) -> None:
+        if self.app_state.previous_page == "profile":
+            self.show_profile()
+            return
+        self.show_dashboard()
 
     def show_guest_dashboard(self) -> None:
         self.app_state.clear_current_user()
