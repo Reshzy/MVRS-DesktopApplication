@@ -13,6 +13,7 @@ from app.services.history_service import HistoryService
 from app.services.interaction_service import InteractionService
 from app.services.movie_service import MovieService
 from app.services.rating_service import RatingService
+from app.services.recommendation_service import RecommendationService
 from app.services.user_service import UserService
 from app.services.watchlist_service import WatchlistService
 from app.state.app_state import AppState
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
         rating_service: RatingService | None = None,
         interaction_service: InteractionService | None = None,
         user_service: UserService | None = None,
+        recommendation_service: RecommendationService | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("mainWindow")
@@ -106,6 +108,11 @@ class MainWindow(QMainWindow):
             InteractionService(session) if session is not None else None
         )
         self.user_service = user_service or (UserService(session) if session is not None else None)
+        self.recommendation_service = recommendation_service or (
+            RecommendationService(session, self.movie_service, user_service=self.user_service)
+            if session is not None
+            else None
+        )
 
         self.image_loader = ImageLoader(self)
         self.sidebar = Sidebar(self)
@@ -129,7 +136,11 @@ class MainWindow(QMainWindow):
             self.interaction_service,
             self,
         )
-        self.recommendations_page = RecommendationsPage(self)
+        self.recommendations_page = RecommendationsPage(
+            self.recommendation_service,
+            self.image_loader,
+            self,
+        )
         self.watchlist_page = WatchlistPage(
             self.watchlist_service,
             self.history_service,
@@ -185,6 +196,7 @@ class MainWindow(QMainWindow):
         self.topbar.profile_requested.connect(lambda: self.navigate("profile"))
         self.topbar.search_requested.connect(self.search_from_topbar)
         self.discover_page.movie_selected.connect(self.show_movie_details)
+        self.recommendations_page.movie_selected.connect(self.show_movie_details)
         self.watchlist_page.movie_selected.connect(self.show_movie_details)
         self.history_page.movie_selected.connect(self.show_movie_details)
         self.movie_details_page.back_requested.connect(self.return_from_details)

@@ -150,6 +150,8 @@ class DiscoverFilters(BaseModel):
     primary_release_year: int | None = None
     vote_average_gte: float | None = None
     with_original_language: str | None = None
+    primary_release_date_gte: str | None = None
+    primary_release_date_lte: str | None = None
     sort_by: str = "popularity.desc"
 
     def to_params(self) -> dict[str, str | int | float]:
@@ -162,4 +164,8 @@ class DiscoverFilters(BaseModel):
             params["vote_average.gte"] = self.vote_average_gte
         if self.with_original_language:
             params["with_original_language"] = self.with_original_language
+        if self.primary_release_date_gte:
+            params["primary_release_date.gte"] = self.primary_release_date_gte
+        if self.primary_release_date_lte:
+            params["primary_release_date.lte"] = self.primary_release_date_lte
         return params

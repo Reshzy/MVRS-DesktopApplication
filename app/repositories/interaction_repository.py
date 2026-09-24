@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.interaction import Interaction
 
@@ -16,6 +16,15 @@ class InteractionRepository:
                 Interaction.user_id == user_id,
                 Interaction.movie_id == movie_id,
                 Interaction.interaction_type == interaction_type,
+            )
+        )
+
+    def list_for_user(self, user_id: int) -> list[Interaction]:
+        return list(
+            self._session.scalars(
+                select(Interaction)
+                .where(Interaction.user_id == user_id)
+                .options(selectinload(Interaction.movie))
             )
         )
 

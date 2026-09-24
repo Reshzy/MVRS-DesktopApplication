@@ -19,6 +19,18 @@ def clamp01(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
 
 
+def release_period_bounds(period: str | None) -> tuple[str | None, str | None] | None:
+    if not period:
+        return None
+    if period == "before-1980":
+        return (None, "1979-12-31")
+    decade = period[:-1] if period.endswith("s") else ""
+    if decade.isdigit():
+        start = int(decade)
+        return (f"{start}-01-01", f"{start + 9}-12-31")
+    return None
+
+
 def year_in_release_period(year: int | None, period: str | None) -> bool:
     if year is None or not period:
         return False

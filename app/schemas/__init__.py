@@ -6,6 +6,7 @@ from app.schemas.user_schema import (
     UserPreferences,
 )
 from app.schemas.library_schema import HistoryEntryDTO, MovieUserState, WatchlistEntryDTO
+from app.schemas.recommendation_schema import RecommendedMovie
 from app.schemas.movie_schema import (
     CreditsDTO,
     DiscoverFilters,
@@ -30,6 +31,7 @@ __all__ = [
     "HistoryEntryDTO",
     "MovieUserState",
     "ProfileUpdateRequest",
+    "RecommendedMovie",
     "RegisterRequest",
     "UserPreferences",
     "WatchlistEntryDTO",

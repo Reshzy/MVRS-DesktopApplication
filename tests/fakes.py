@@ -16,15 +16,18 @@ from app.schemas.movie_schema import (
 )
 
 
-def sample_movie(index: int = 1, title: str | None = None) -> MovieSummaryDTO:
-    return MovieSummaryDTO(
-        tmdb_id=1000 + index,
-        title=title or f"Sample Movie {index}",
-        overview=f"Overview for movie {index}.",
-        release_date=date(2000 + index, 5, 1),
-        vote_average=7.0 + index / 10,
-        poster_path=None,
-    )
+def sample_movie(index: int = 1, title: str | None = None, **updates: object) -> MovieSummaryDTO:
+    payload = {
+        "tmdb_id": 1000 + index,
+        "title": title or f"Sample Movie {index}",
+        "overview": f"Overview for movie {index}.",
+        "release_date": date(2000 + index, 5, 1),
+        "vote_average": 7.0 + index / 10,
+        "poster_path": None,
+        "genre_ids": [],
+    }
+    payload.update(updates)
+    return MovieSummaryDTO(**payload)
 
 
 class FakeMovieService:
@@ -34,6 +37,8 @@ class FakeMovieService:
         self.details_calls: list[int] = []
         self.credits_calls: list[int] = []
         self.similar_calls: list[int] = []
+        self.popular_calls: list[int] = []
+        self.trending_calls = 0
         self.genre_calls = 0
         self.delay = 0.0
         self.fail = False
@@ -43,7 +48,10 @@ class FakeMovieService:
             GenreDTO(tmdb_genre_id=18, name="Drama"),
             GenreDTO(tmdb_genre_id=28, name="Action"),
         ]
-        self.movies = [sample_movie(1, "Fight Club"), sample_movie(2, "Inception")]
+        self.movies = [
+            sample_movie(1, "Fight Club", genre_ids=[18], popularity=70.0, original_language="en"),
+            sample_movie(2, "Inception", genre_ids=[28], popularity=90.0, original_language="en"),
+        ]
 
     def close(self) -> None:
         return None
@@ -84,6 +92,18 @@ class FakeMovieService:
             ],
             director="David Fincher",
         )
+
+    def get_popular_movies(self, page: int = 1) -> MoviePageDTO:
+        self._maybe_delay()
+        self.popular_calls.append(page)
+        self._maybe_fail()
+        return self._page(page)
+
+    def get_trending_movies(self) -> MoviePageDTO:
+        self._maybe_delay()
+        self.trending_calls += 1
+        self._maybe_fail()
+        return self._page(1)
 
     def get_similar_movies(self, movie_id: int) -> MoviePageDTO:
         self._maybe_delay()

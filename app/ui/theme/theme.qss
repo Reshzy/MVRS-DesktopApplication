@@ -388,7 +388,7 @@ QWidget#libraryTile {{
     background-color: transparent;
 }}
 
-QLabel#libraryTileMeta {{
+QLabel#libraryTileMeta, QLabel#recommendationReason {{
     color: {TEXT_MUTED};
 }}
 
