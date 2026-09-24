@@ -24,3 +24,8 @@ class UserRepository:
         user.onboarding_completed = completed
         self._session.flush()
         return user
+
+    def update_name(self, user: User, name: str) -> User:
+        user.name = name
+        self._session.flush()
+        return user

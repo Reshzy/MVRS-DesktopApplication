@@ -22,12 +22,13 @@ class HistoryRepository:
         )
 
     def mark_watched(self, user_id: int, movie_id: int) -> WatchHistory:
+        now = datetime.now(timezone.utc)
         existing = self.get(user_id, movie_id)
         if existing is not None:
-            existing.watched_at = datetime.now(timezone.utc)
+            existing.watched_at = now
             self._session.flush()
             return existing
-        item = WatchHistory(user_id=user_id, movie_id=movie_id)
+        item = WatchHistory(user_id=user_id, movie_id=movie_id, watched_at=now)
         self._session.add(item)
         self._session.flush()
         return item

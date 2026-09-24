@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, QTimer, Signal, Slot
 from PySide6.QtGui import QImage, QPixmap
 
 from app.api.image_client import DEFAULT_POSTER_SIZE, ImageClient, image_cache_key
+from app.ui.workers.signals import QUEUED
 from app.ui.workers.task_runner import TaskRunner
 
 
@@ -38,12 +39,11 @@ class ImageLoader(QObject):
             return key
 
         self._inflight.add(key)
-        signals = self._runner.submit(self._fetch_job, image_path, size)
-        signals.result.connect(self._on_result)
-        signals.error.connect(
-            lambda _message, pending=key: self._on_error(pending),
-            Qt.ConnectionType.QueuedConnection,
-        )
+        signals = self._runner.submit(self._fetch_job, image_path, size, key=f"image:{key}")
+        if signals is None:
+            return key
+        signals.result.connect(self._on_result, QUEUED)
+        signals.error.connect(lambda _message, pending=key: self._on_error(pending), QUEUED)
         return key
 
     def _fetch_job(self, image_path: str, size: str) -> tuple[str, bytes]:

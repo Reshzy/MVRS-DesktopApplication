@@ -21,10 +21,11 @@ from app.schemas.user_schema import GenrePreference, MoviePreference, UserPrefer
 from app.services.movie_service import MovieService
 from app.services.user_service import UserService, UserServiceError
 from app.state.app_state import AppState
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, SM, XL
 from app.ui.widgets.flow_layout import FlowLayout
 from app.ui.widgets.search_bar import SearchBar
+from app.ui.workers.signals import QUEUED
 from app.ui.workers.task_runner import TaskRunner
 from app.utils.constants import (
     LANGUAGE_NAMES,
@@ -114,6 +115,7 @@ class OnboardingPage(QWidget):
         self.genre_status.setWordWrap(True)
         self.genre_retry = QPushButton("Retry")
         self.genre_retry.setObjectName("onboardingGenreRetry")
+        style_button(self.genre_retry, tooltip="Reload genres")
         apply_property(self.genre_retry, "variant", "secondary")
         self.genre_retry.clicked.connect(self._retry_genres)
         self.genre_retry.hide()
@@ -183,6 +185,7 @@ class OnboardingPage(QWidget):
         self.interest_input.returnPressed.connect(self._add_interest)
         self.interest_add_button = QPushButton("Add")
         self.interest_add_button.setObjectName("onboardingInterestAdd")
+        style_button(self.interest_add_button, tooltip="Add a viewing interest")
         apply_property(self.interest_add_button, "variant", "secondary")
         self.interest_add_button.clicked.connect(self._add_interest)
         interest_row = QHBoxLayout()
@@ -201,11 +204,13 @@ class OnboardingPage(QWidget):
         self.continue_button = QPushButton("Continue")
         self.continue_button.setObjectName("onboardingContinueButton")
         apply_property(self.continue_button, "variant", "primary")
+        style_button(self.continue_button, tooltip="Save these preferences")
         self.continue_button.clicked.connect(self._save)
 
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setObjectName("onboardingCancelButton")
         apply_property(self.cancel_button, "variant", "secondary")
+        style_button(self.cancel_button, tooltip="Return without saving")
         self.cancel_button.clicked.connect(self.cancelled.emit)
         self.cancel_button.hide()
 
@@ -379,8 +384,14 @@ class OnboardingPage(QWidget):
             return
         self._genre_request_id += 1
         self._show_genre_message("Loading genres...", retry=False)
-        signals = self._runner.submit(self._genres_job, self._genre_request_id)
-        signals.result.connect(self._on_genres)
+        request_id = self._genre_request_id
+        signals = self._runner.submit(self._genres_job, request_id, key=f"onboarding:genres:{request_id}")
+        if signals is not None:
+            signals.result.connect(self._on_genres, QUEUED)
+            signals.error.connect(
+                lambda message, rid=request_id: self._on_genres(_AsyncResult(rid, error=message)),
+                QUEUED,
+            )
 
     def _genres_job(self, request_id: int) -> _AsyncResult:
         try:
@@ -461,8 +472,14 @@ class OnboardingPage(QWidget):
         self.search_hint.setText("Searching...")
         apply_property(self.search_hint, "role", "caption")
         self.search_hint.show()
-        signals = self._runner.submit(self._search_job, self._search_request_id, cleaned)
-        signals.result.connect(self._on_search_result)
+        request_id = self._search_request_id
+        signals = self._runner.submit(self._search_job, request_id, cleaned)
+        if signals is not None:
+            signals.result.connect(self._on_search_result, QUEUED)
+            signals.error.connect(
+                lambda message, rid=request_id: self._on_search_result(_AsyncResult(rid, error=message)),
+                QUEUED,
+            )
 
     def _search_job(self, request_id: int, query: str) -> _AsyncResult:
         try:

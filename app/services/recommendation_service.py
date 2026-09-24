@@ -7,6 +7,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
+from app.database.locks import session_lock
 from app.recommendation.engine import Recommendation, RecommendationEngine, RecommendationError
 from app.recommendation.feature_builder import CandidateMovie, UserRecommendationSignals
 from app.recommendation.scoring import release_period_bounds
@@ -80,33 +81,34 @@ class RecommendationService:
         genre_lookup: dict[int, str] | None = None,
     ) -> UserRecommendationSignals:
         preferences = self._users.get_preferences(user_id)
-        ratings: dict[int, int] = {}
-        for item in self._ratings.list_for_user(user_id):
-            movie = item.movie
-            if movie is None:
-                continue
-            ratings[int(movie.tmdb_id)] = int(item.rating)
+        with session_lock():
+            ratings: dict[int, int] = {}
+            for item in self._ratings.list_for_user(user_id):
+                movie = item.movie
+                if movie is None:
+                    continue
+                ratings[int(movie.tmdb_id)] = int(item.rating)
 
-        likes: set[int] = set()
-        dislikes: set[int] = set()
-        not_interested: set[int] = set()
-        for item in self._interactions.list_for_user(user_id):
-            movie = item.movie
-            if movie is None:
-                continue
-            tmdb_id = int(movie.tmdb_id)
-            if item.interaction_type == LIKE:
-                likes.add(tmdb_id)
-            elif item.interaction_type == DISLIKE:
-                dislikes.add(tmdb_id)
-            elif item.interaction_type == NOT_INTERESTED:
-                not_interested.add(tmdb_id)
+            likes: set[int] = set()
+            dislikes: set[int] = set()
+            not_interested: set[int] = set()
+            for item in self._interactions.list_for_user(user_id):
+                movie = item.movie
+                if movie is None:
+                    continue
+                tmdb_id = int(movie.tmdb_id)
+                if item.interaction_type == LIKE:
+                    likes.add(tmdb_id)
+                elif item.interaction_type == DISLIKE:
+                    dislikes.add(tmdb_id)
+                elif item.interaction_type == NOT_INTERESTED:
+                    not_interested.add(tmdb_id)
 
-        history = {
-            int(item.movie.tmdb_id)
-            for item in self._history.list_for_user(user_id)
-            if item.movie is not None
-        }
+            history = {
+                int(item.movie.tmdb_id)
+                for item in self._history.list_for_user(user_id)
+                if item.movie is not None
+            }
         favorite_details: Sequence[CandidateMovie] = ()
         if enrich_favorites:
             favorite_details = self._favorite_details(preferences, genre_lookup=genre_lookup)
@@ -121,6 +123,8 @@ class RecommendationService:
         )
 
     def recommend_for_user(self, user_id: int, *, limit: int = DEFAULT_RECOMMENDATION_LIMIT) -> list[RecommendedMovie]:
+        if user_id <= 0:
+            raise RecommendationServiceError("Sign in to get personalized recommendations.")
         try:
             genre_lookup = self._genre_lookup()
             signals = self.build_signals(user_id, enrich_favorites=True, genre_lookup=genre_lookup)
@@ -158,9 +162,10 @@ class RecommendationService:
         return tuple(details)
 
     def _lookup_movie(self, tmdb_id: int) -> MovieSummaryDTO | None:
-        stored = self._movies.get_by_tmdb_id(tmdb_id)
-        if stored is not None:
-            return MovieSummaryDTO.from_model(stored)
+        with session_lock():
+            stored = self._movies.get_by_tmdb_id(tmdb_id)
+            if stored is not None:
+                return MovieSummaryDTO.from_model(stored)
         try:
             return self._movie_service.get_movie_details(tmdb_id)
         except Exception:

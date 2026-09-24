@@ -48,3 +48,40 @@ class PreferenceRepository:
             created.append(item)
         self._session.flush()
         return created
+
+    def get_value(self, user_id: int, preference_type: str) -> str | None:
+        item = self._session.scalar(
+            select(UserPreference)
+            .where(
+                UserPreference.user_id == user_id,
+                UserPreference.preference_type == preference_type,
+            )
+            .order_by(UserPreference.id)
+        )
+        if item is None:
+            return None
+        value = str(item.preference_value or "").strip()
+        return value or None
+
+    def upsert_value(self, user_id: int, preference_type: str, preference_value: str) -> UserPreference:
+        item = self._session.scalar(
+            select(UserPreference)
+            .where(
+                UserPreference.user_id == user_id,
+                UserPreference.preference_type == preference_type,
+            )
+            .order_by(UserPreference.id)
+        )
+        cleaned = preference_value.strip()[:255]
+        if item is None:
+            item = UserPreference(
+                user_id=user_id,
+                preference_type=preference_type,
+                preference_value=cleaned,
+                weight=1.0,
+            )
+            self._session.add(item)
+        else:
+            item.preference_value = cleaned
+        self._session.flush()
+        return item

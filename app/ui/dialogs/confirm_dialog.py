@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, XL
 
 
@@ -33,12 +33,22 @@ class ConfirmDialog(QDialog):
         self.confirm_button = QPushButton(confirm_label)
         self.confirm_button.setObjectName("confirmDialogAccept")
         apply_property(self.confirm_button, "variant", confirm_variant)
+        style_button(self.confirm_button, tooltip=confirm_label)
         self.confirm_button.clicked.connect(self.accept)
 
         self.cancel_button = QPushButton(cancel_label)
         self.cancel_button.setObjectName("confirmDialogCancel")
         apply_property(self.cancel_button, "variant", "secondary")
+        style_button(self.cancel_button, tooltip=cancel_label)
         self.cancel_button.clicked.connect(self.reject)
+        if confirm_variant == "danger":
+            self.cancel_button.setDefault(True)
+            self.confirm_button.setAutoDefault(False)
+            self.cancel_button.setFocus()
+        else:
+            self.confirm_button.setDefault(True)
+            self.cancel_button.setAutoDefault(False)
+            self.confirm_button.setFocus()
 
         actions = QHBoxLayout()
         actions.setSpacing(MD)

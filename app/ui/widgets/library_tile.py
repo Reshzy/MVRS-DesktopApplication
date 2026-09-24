@@ -4,7 +4,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from app.schemas.movie_schema import MovieSummaryDTO
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import SM
 from app.ui.widgets.movie_card import POSTER_WIDTH, MovieCard
 from app.ui.workers.image_worker import ImageLoader
@@ -42,6 +42,7 @@ class LibraryTile(QWidget):
         self.remove_button = QPushButton("Remove")
         self.remove_button.setObjectName("libraryTileRemoveButton")
         apply_property(self.remove_button, "variant", "danger")
+        style_button(self.remove_button, tooltip="Remove this title")
         self.remove_button.clicked.connect(lambda: self.remove_requested.emit(self.movie))
         self.remove_button.setVisible(show_remove)
 
@@ -49,6 +50,7 @@ class LibraryTile(QWidget):
         self.watched_button.setObjectName("libraryTileWatchedButton")
         apply_property(self.watched_button, "variant", "secondary")
         apply_property(self.watched_button, "selected", "true" if watched else "false")
+        style_button(self.watched_button, tooltip="Mark this title as watched")
         self.watched_button.clicked.connect(lambda: self.watched_requested.emit(self.movie))
         self.watched_button.setVisible(show_watched)
 

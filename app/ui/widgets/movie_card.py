@@ -12,8 +12,8 @@ from app.ui.theme.spacing import MD, SM
 from app.ui.widgets.poster_placeholder import poster_placeholder
 from app.ui.workers.image_worker import ImageLoader
 
-POSTER_WIDTH = 160
-POSTER_HEIGHT = 240
+POSTER_WIDTH = 168
+POSTER_HEIGHT = 252
 POSTER_RATIO = (2, 3)
 
 
@@ -46,6 +46,7 @@ class MovieCard(QFrame):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.setAccessibleName(movie.title)
 
         self.movie = movie
         self._image_key: str | None = None
@@ -64,9 +65,9 @@ class MovieCard(QFrame):
         self.title_label.setObjectName("movieCardTitle")
         apply_property(self.title_label, "role", "body")
         self.title_label.setWordWrap(True)
-        self.title_label.setToolTip(movie.title)
         line = self.title_label.fontMetrics().lineSpacing()
-        self.title_label.setFixedHeight((line * 2) + 2)
+        self.title_label.setFixedHeight((line * 2) + 4)
+        self._refresh_tooltip()
 
         self.year_label = QLabel(format_release_year(movie.release_date), self)
         self.year_label.setObjectName("movieCardYear")
@@ -86,6 +87,7 @@ class MovieCard(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(SM, SM, SM, MD)
         layout.setSpacing(SM)
+        self.setFixedWidth(poster_width + SM * 2)
         layout.addWidget(self.poster_label)
         layout.addWidget(self.title_label)
         layout.addLayout(meta)
@@ -138,3 +140,11 @@ class MovieCard(QFrame):
 
     def _show_placeholder(self) -> None:
         self.poster_label.setPixmap(poster_placeholder(self._poster_width, self._poster_height))
+
+    def _refresh_tooltip(self) -> None:
+        year = format_release_year(self.movie.release_date)
+        rating = format_rating(self.movie.vote_average)
+        text = f"{self.movie.title}\n{year} · {rating}"
+        self.setToolTip(text)
+        self.title_label.setToolTip(text)
+        self.setAccessibleDescription(f"{year}, rating {rating}")

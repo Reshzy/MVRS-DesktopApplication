@@ -75,3 +75,59 @@ def test_invalid_login(auth_service: AuthService) -> None:
 
     with pytest.raises(InvalidCredentialsError):
         auth_service.login(email="missing@example.com", password="password123")
+
+
+def test_password_mismatch_is_rejected(auth_service: AuthService) -> None:
+    with pytest.raises(ValidationError, match="match"):
+        auth_service.register(
+            name="Ada Lovelace",
+            email="ada@example.com",
+            password="password123",
+            confirm_password="password456",
+        )
+
+
+def test_blank_name_is_rejected(auth_service: AuthService) -> None:
+    with pytest.raises(ValidationError):
+        auth_service.register(
+            name="   ",
+            email="ada@example.com",
+            password="password123",
+            confirm_password="password123",
+        )
+
+
+def test_email_is_normalized_for_register_and_login(
+    auth_service: AuthService, db_session, app_state: AppState
+) -> None:
+    user = auth_service.register(
+        name="Ada Lovelace",
+        email="  Ada@Example.COM  ",
+        password="password123",
+        confirm_password="password123",
+    )
+    assert user.email == "ada@example.com"
+    assert db_session.get(User, user.id).email == "ada@example.com"
+
+    app_state.clear_current_user()
+    logged_in = auth_service.login(email="ADA@example.com", password="password123")
+    assert logged_in.id == user.id
+    assert app_state.current_user is not None
+    assert app_state.current_user.id == user.id
+
+
+def test_password_hash_and_verify_roundtrip(auth_service: AuthService) -> None:
+    hashed = auth_service.hash_password("password123")
+    assert hashed != "password123"
+    assert auth_service.verify_password("password123", hashed) is True
+    assert auth_service.verify_password("wrongpassword", hashed) is False
+
+
+def test_register_and_login_work_without_app_state(db_session) -> None:
+    service = AuthService(db_session)
+    user = service.register(**VALID_REGISTER)
+    assert user.id is not None
+    assert db_session.get(User, user.id) is not None
+
+    logged_in = service.login(email="ada@example.com", password="password123")
+    assert logged_in.id == user.id

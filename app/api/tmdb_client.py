@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 import httpx
@@ -38,6 +39,7 @@ class TMDBClient:
             timeout=timeout,
             headers=headers,
         )
+        self._lock = threading.Lock()
 
     def search_movies(self, query: str, page: int = 1) -> dict[str, Any]:
         return self._get("/search/movie", params={"query": query, "page": page})
@@ -75,7 +77,8 @@ class TMDBClient:
             query["api_key"] = self._settings.tmdb_api_key
 
         try:
-            response = self._http.get(path, params=query)
+            with self._lock:
+                response = self._http.get(path, params=query)
         except httpx.TimeoutException as exc:
             logger.warning("TMDB request timed out path=%s", path)
             raise TMDBTimeoutError("The movie service took too long to respond.") from exc

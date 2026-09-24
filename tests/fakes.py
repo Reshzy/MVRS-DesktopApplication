@@ -41,6 +41,8 @@ class FakeMovieService:
         self.trending_calls = 0
         self.genre_calls = 0
         self.delay = 0.0
+        self.query_delays: dict[str, float] = {}
+        self.echo_query = False
         self.fail = False
         self.fail_methods: set[str] = set()
         self.empty = False
@@ -64,12 +66,21 @@ class FakeMovieService:
         return list(self.genres)
 
     def search_movies(self, query: str, page: int = 1) -> MoviePageDTO:
-        self._maybe_delay()
+        self._maybe_delay(self.query_delays.get(query, self.delay))
         self.search_calls.append((query, page))
         self._maybe_fail("search_movies")
         if not query.strip():
             return MoviePageDTO()
-        return self._page(page)
+        page_data = self._page(page)
+        if self.echo_query and page_data.results:
+            first = page_data.results[0].model_copy(update={"title": query.strip()})
+            page_data = MoviePageDTO(
+                page=page_data.page,
+                total_pages=page_data.total_pages,
+                total_results=page_data.total_results,
+                results=[first, *page_data.results[1:]],
+            )
+        return page_data
 
     def get_movie_details(self, movie_id: int) -> MovieDetailsDTO:
         self._maybe_delay()
@@ -163,9 +174,10 @@ class FakeMovieService:
             results=list(self.movies),
         )
 
-    def _maybe_delay(self) -> None:
-        if self.delay:
-            time.sleep(self.delay)
+    def _maybe_delay(self, delay: float | None = None) -> None:
+        wait = self.delay if delay is None else delay
+        if wait:
+            time.sleep(wait)
 
     def _maybe_fail(self, method: str = "") -> None:
         if self.fail or method in self.fail_methods:

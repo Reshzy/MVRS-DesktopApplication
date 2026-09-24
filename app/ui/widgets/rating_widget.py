@@ -37,6 +37,9 @@ class RatingWidget(QWidget):
             button.setFixedSize(star_size, star_size)
             button.setMouseTracking(True)
             apply_property(button, "role", "star")
+            stars = "star" if value == 1 else "stars"
+            button.setToolTip(f"Rate {value} {stars}")
+            button.setAccessibleName(f"Rate {value} {stars}")
             button.clicked.connect(lambda _checked=False, rating=value: self._select(rating))
             button.installEventFilter(self)
             self._stars.append(button)

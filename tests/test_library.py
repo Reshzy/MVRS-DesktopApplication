@@ -12,7 +12,7 @@ from app.schemas.movie_schema import MovieSummaryDTO
 from app.services.auth_service import AuthService
 from app.services.history_service import HistoryService
 from app.services.interaction_service import InteractionService
-from app.services.library_base import LibraryError
+from app.services.library_base import GuestAccessError, LibraryError
 from app.services.rating_service import RatingService
 from app.services.watchlist_service import WatchlistService
 from app.utils.constants import DISLIKE, LIKE, NOT_INTERESTED
@@ -113,9 +113,76 @@ def test_interactions_like_dislike_exclusive(db_session: Session, auth_service: 
     assert service.has(user.id, FULL_DETAILS.tmdb_id, NOT_INTERESTED) is False
 
 
+def test_guest_user_id_cannot_persist_library_data(db_session: Session) -> None:
+    movie = FULL_DETAILS
+    with pytest.raises(GuestAccessError):
+        WatchlistService(db_session).add(0, movie)
+    with pytest.raises(GuestAccessError):
+        HistoryService(db_session).mark_watched(0, movie)
+    with pytest.raises(GuestAccessError):
+        RatingService(db_session).set_rating(0, movie, 4)
+    with pytest.raises(GuestAccessError):
+        InteractionService(db_session).set_like(0, movie, True)
+
+    assert db_session.scalar(select(func.count()).select_from(Watchlist)) == 0
+    assert db_session.scalar(select(func.count()).select_from(WatchHistory)) == 0
+    assert db_session.scalar(select(func.count()).select_from(Rating)) == 0
+    assert db_session.scalar(select(func.count()).select_from(Interaction)) == 0
+
+
 def test_missing_tmdb_id_is_rejected(db_session: Session, auth_service: AuthService) -> None:
     user = _user(auth_service)
     service = WatchlistService(db_session)
 
     with pytest.raises(LibraryError):
         service.add(user.id, MovieSummaryDTO(tmdb_id=0, title="Missing"))
+
+
+def test_rating_rejects_zero_and_accepts_minimum(db_session: Session, auth_service: AuthService) -> None:
+    user = _user(auth_service)
+    service = RatingService(db_session)
+
+    with pytest.raises(LibraryError, match="between"):
+        service.set_rating(user.id, FULL_DETAILS, 0)
+
+    saved = service.set_rating(user.id, FULL_DETAILS, 1)
+    assert saved.rating == 1
+    assert service.get_rating(user.id, FULL_DETAILS.tmdb_id) == 1
+
+
+def test_like_can_be_toggled_off(db_session: Session, auth_service: AuthService) -> None:
+    user = _user(auth_service)
+    service = InteractionService(db_session)
+
+    assert service.set_like(user.id, FULL_DETAILS, True) is True
+    assert service.set_like(user.id, FULL_DETAILS, False) is False
+    assert service.has(user.id, FULL_DETAILS.tmdb_id, LIKE) is False
+    assert service.types_for_movie(user.id, FULL_DETAILS.tmdb_id) == set()
+
+
+def test_library_data_is_isolated_per_user(db_session: Session, auth_service: AuthService) -> None:
+    first = _user(auth_service)
+    second = auth_service.register(
+        name="Grace Hopper",
+        email="grace@example.com",
+        password="password123",
+        confirm_password="password123",
+    )
+    WatchlistService(db_session).add(first.id, FULL_DETAILS)
+    HistoryService(db_session).mark_watched(first.id, FULL_DETAILS)
+    RatingService(db_session).set_rating(first.id, FULL_DETAILS, 5)
+    InteractionService(db_session).set_like(first.id, FULL_DETAILS, True)
+
+    assert WatchlistService(db_session).is_saved(second.id, FULL_DETAILS.tmdb_id) is False
+    assert HistoryService(db_session).has_watched(second.id, FULL_DETAILS.tmdb_id) is False
+    assert RatingService(db_session).get_rating(second.id, FULL_DETAILS.tmdb_id) is None
+    assert InteractionService(db_session).has(second.id, FULL_DETAILS.tmdb_id, LIKE) is False
+    assert WatchlistService(db_session).list_entries(second.id) == []
+    assert HistoryService(db_session).list_entries(second.id) == []
+
+
+def test_unknown_interaction_type_is_rejected(db_session: Session, auth_service: AuthService) -> None:
+    user = _user(auth_service)
+    service = InteractionService(db_session)
+    with pytest.raises(LibraryError, match="Unknown"):
+        service._set_exclusive(user.id, FULL_DETAILS, "binge", True)

@@ -4,6 +4,7 @@ import bcrypt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.database.locks import session_lock
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth_schema import LoginRequest, RegisterRequest
@@ -49,19 +50,23 @@ class AuthService:
             password=password,
             confirm_password=confirm_password,
         )
-        if self._repository.get_by_email(payload.email) is not None:
-            raise DuplicateEmailError("An account with this email already exists.")
-
+        password_hash = self.hash_password(payload.password)
         try:
-            user = self._repository.create(
-                name=payload.name,
-                email=payload.email,
-                password_hash=self.hash_password(payload.password),
-            )
-            self._session.commit()
-            self._session.refresh(user)
+            with session_lock():
+                if self._repository.get_by_email(payload.email) is not None:
+                    raise DuplicateEmailError("An account with this email already exists.")
+                user = self._repository.create(
+                    name=payload.name,
+                    email=payload.email,
+                    password_hash=password_hash,
+                )
+                self._session.commit()
+                self._session.refresh(user)
+        except DuplicateEmailError:
+            raise
         except IntegrityError as exc:
-            self._session.rollback()
+            with session_lock():
+                self._session.rollback()
             raise DuplicateEmailError("An account with this email already exists.") from exc
 
         self._assign_current_user(user)
@@ -75,7 +80,8 @@ class AuthService:
         password: str | None = None,
     ) -> User:
         payload = data or LoginRequest(email=email, password=password)
-        user = self._repository.get_by_email(payload.email)
+        with session_lock():
+            user = self._repository.get_by_email(payload.email)
         if user is None or not self.verify_password(payload.password, user.password_hash):
             raise InvalidCredentialsError("Invalid email or password.")
 

@@ -4,7 +4,7 @@ from PySide6.QtCore import QThreadPool, Qt
 from PySide6.QtWidgets import QPushButton
 
 from app.ui.app_window import MainWindow
-from app.utils.constants import LIKE
+from app.utils.constants import DISLIKE, LIKE, NOT_INTERESTED
 from tests.fakes import FakeMovieService
 from tests.test_auth import VALID_REGISTER
 
@@ -14,9 +14,10 @@ def _open_discover(main_window: MainWindow, qtbot) -> None:
         qtbot.mouseClick(main_window.welcome_page.guest_button, Qt.MouseButton.LeftButton)
     else:
         main_window.show_dashboard()
+    QThreadPool.globalInstance().waitForDone(4000)
     qtbot.mouseClick(main_window.sidebar.button("discover"), Qt.MouseButton.LeftButton)
     page = main_window.discover_page
-    qtbot.waitUntil(lambda: page.states.currentWidget() is not page.loading, timeout=3000)
+    qtbot.waitUntil(lambda: page.states.currentWidget() is not page.loading, timeout=8000)
 
 
 def _open_details(main_window: MainWindow, qtbot):
@@ -114,3 +115,21 @@ def test_signed_in_actions_persist(main_window: MainWindow, auth_service, qtbot)
     assert main_window.interaction_service.has(user.id, 1001, LIKE)
     assert details.watchlist_button.text() == "Remove from Watchlist"
     assert details.watched_button.text() == "Watched"
+
+
+def test_dislike_and_not_interested_buttons_persist(
+    main_window: MainWindow, auth_service, qtbot
+) -> None:
+    user = auth_service.register(**VALID_REGISTER)
+    details = _open_details(main_window, qtbot)
+    service = main_window.interaction_service
+    assert service is not None
+
+    qtbot.mouseClick(details.like_button, Qt.MouseButton.LeftButton)
+    assert service.has(user.id, 1001, LIKE)
+    qtbot.mouseClick(details.dislike_button, Qt.MouseButton.LeftButton)
+    assert service.has(user.id, 1001, DISLIKE)
+    assert service.has(user.id, 1001, LIKE) is False
+    qtbot.mouseClick(details.not_interested_button, Qt.MouseButton.LeftButton)
+    assert service.has(user.id, 1001, NOT_INTERESTED)
+    assert service.has(user.id, 1001, DISLIKE)

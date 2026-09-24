@@ -9,7 +9,7 @@ from app.models.user_preference import UserPreference
 from app.schemas.user_schema import GenrePreference, MoviePreference, UserPreferences
 from app.services.auth_service import AuthService
 from app.services.user_service import UserService, UserServiceError
-from app.utils.constants import FAVORITE_GENRE, FAVORITE_MOVIE, INTEREST
+from app.utils.constants import DEFAULT_THEME, FAVORITE_GENRE, FAVORITE_MOVIE, INTEREST, THEME_LIGHT
 
 
 def _user(auth_service: AuthService):
@@ -115,6 +115,44 @@ def test_preferences_ignore_unknown_and_invalid_rows() -> None:
     assert loaded.favorite_movies[0].title == "Fight Club"
     assert loaded.minimum_rating is None
     assert loaded.interests == ["noir"]
+
+
+def test_update_profile_changes_name(db_session: Session, auth_service: AuthService) -> None:
+    user = _user(auth_service)
+    service = UserService(db_session)
+
+    updated = service.update_profile(user.id, "  Ada  ")
+
+    assert updated.name == "Ada"
+    assert service.get_profile(user.id).name == "Ada"
+
+
+def test_update_profile_rejects_blank_name(db_session: Session, auth_service: AuthService) -> None:
+    user = _user(auth_service)
+    service = UserService(db_session)
+    with pytest.raises(UserServiceError, match="Name"):
+        service.update_profile(user.id, "   ")
+
+
+def test_theme_preference_persists_and_survives_preference_replace(
+    db_session: Session, auth_service: AuthService
+) -> None:
+    user = _user(auth_service)
+    service = UserService(db_session)
+
+    assert service.get_theme(user.id) == DEFAULT_THEME
+    assert service.save_theme(user.id, THEME_LIGHT) == THEME_LIGHT
+    service.save_preferences(user.id, _sample_preferences())
+
+    assert service.get_theme(user.id) == THEME_LIGHT
+    assert [genre.name for genre in service.get_preferences(user.id).favorite_genres] == ["Drama", "Action"]
+
+
+def test_save_theme_rejects_unknown_value(db_session: Session, auth_service: AuthService) -> None:
+    user = _user(auth_service)
+    service = UserService(db_session)
+    with pytest.raises(UserServiceError, match="theme"):
+        service.save_theme(user.id, "neon")
 
 
 def test_preferences_reject_unsupported_choices() -> None:

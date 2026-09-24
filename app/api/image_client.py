@@ -84,6 +84,11 @@ class ImageClient:
 
     def _download(self, url: str) -> bytes:
         try:
+            if self._owns_client:
+                with httpx.Client(timeout=self._timeout) as client:
+                    response = client.get(url)
+                    response.raise_for_status()
+                    return response.content
             with self._lock:
                 response = self._http.get(url)
                 response.raise_for_status()

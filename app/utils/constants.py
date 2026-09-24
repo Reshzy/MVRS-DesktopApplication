@@ -30,6 +30,15 @@ PREFERRED_LANGUAGE: Final[str] = "preferred_language"
 RELEASE_PERIOD: Final[str] = "release_period"
 MINIMUM_RATING: Final[str] = "minimum_rating"
 INTEREST: Final[str] = "interest"
+THEME_PREFERENCE: Final[str] = "theme"
+THEME_DARK: Final[str] = "dark"
+THEME_LIGHT: Final[str] = "light"
+DEFAULT_THEME: Final[str] = THEME_DARK
+THEME_LABELS: Final[tuple[tuple[str, str], ...]] = (
+    (THEME_DARK, "Dark"),
+    (THEME_LIGHT, "Light"),
+)
+THEMES: Final[frozenset[str]] = frozenset(value for value, _label in THEME_LABELS)
 
 PREFERENCE_TYPES: Final[tuple[str, ...]] = (
     FAVORITE_GENRE,
@@ -73,3 +82,11 @@ CONTENT_MATCH_THRESHOLD: Final[float] = 0.08
 DASHBOARD_ROW_LIMIT: Final[int] = 12
 DASHBOARD_RECENT_DAYS: Final[int] = 365
 HIGHLY_RATED_THRESHOLD: Final[float] = 7.0
+INSIGHTS_TOP_MOVIES: Final[int] = 5
+INSIGHTS_RECENT_LIMIT: Final[int] = 8
+
+SIGN_IN_PROMPT_TITLE: Final[str] = "Sign in required"
+SIGN_IN_PROMPT_MESSAGE: Final[str] = (
+    "Create an account or log in to save watchlist, ratings, history, and personalized recommendations."
+)
+SIGN_IN_STATUS_MESSAGE: Final[str] = "Sign in to save watchlist, ratings, and watch history."

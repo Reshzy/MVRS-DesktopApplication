@@ -2,7 +2,7 @@ from pydantic import ValidationError
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from app.schemas.user_schema import ProfileUpdateRequest
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, XL
 from app.utils.helpers import format_validation_error
 
@@ -41,6 +41,8 @@ class EditProfileDialog(QDialog):
         self.name_input.setPlaceholderText("Name")
         self.name_input.setText(name)
         self.name_input.setMaxLength(120)
+        self.name_input.setToolTip("Display name")
+        self.name_input.returnPressed.connect(self._save)
 
         self.email_input = QLineEdit()
         self.email_input.setObjectName("editProfileEmailInput")
@@ -48,16 +50,23 @@ class EditProfileDialog(QDialog):
         self.email_input.setText(email)
         self.email_input.setReadOnly(True)
         self.email_input.setEnabled(False)
+        self.email_input.setToolTip("Email cannot be changed")
 
         self.save_button = QPushButton("Save")
         self.save_button.setObjectName("editProfileSave")
         apply_property(self.save_button, "variant", "primary")
+        style_button(self.save_button, tooltip="Save name")
+        self.save_button.setDefault(True)
         self.save_button.clicked.connect(self._save)
 
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setObjectName("editProfileCancel")
         apply_property(self.cancel_button, "variant", "secondary")
+        style_button(self.cancel_button, tooltip="Discard changes")
+        self.cancel_button.setAutoDefault(False)
         self.cancel_button.clicked.connect(self.reject)
+        self.name_input.setFocus()
+        self.name_input.selectAll()
 
         actions = QHBoxLayout()
         actions.setSpacing(MD)

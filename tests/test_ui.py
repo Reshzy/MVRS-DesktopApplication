@@ -127,6 +127,78 @@ def test_logout_clears_state_and_returns_to_welcome(main_window: MainWindow, qtb
     assert not main_window.topbar.isVisible()
 
 
+def test_sidebar_navigates_every_shell_page(main_window: MainWindow, qtbot) -> None:
+    qtbot.mouseClick(main_window.welcome_page.guest_button, Qt.MouseButton.LeftButton)
+    destinations = {
+        "home": main_window.dashboard_page,
+        "discover": main_window.discover_page,
+        "recommendations": main_window.recommendations_page,
+        "watchlist": main_window.watchlist_page,
+        "history": main_window.history_page,
+        "insights": main_window.insights_page,
+        "profile": main_window.profile_page,
+    }
+
+    for page_id, page in destinations.items():
+        qtbot.mouseClick(main_window.sidebar.button(page_id), Qt.MouseButton.LeftButton)
+        assert main_window.stack.currentWidget() is page
+        assert main_window.current_page_id() == page_id
+        assert main_window.sidebar.current_id() == page_id
+        assert main_window.sidebar.isVisible()
+        assert main_window.topbar.isVisible()
+
+
+def test_login_back_returns_to_welcome(main_window: MainWindow, qtbot) -> None:
+    qtbot.mouseClick(main_window.welcome_page.login_button, Qt.MouseButton.LeftButton)
+    qtbot.mouseClick(main_window.login_page.back_link, Qt.MouseButton.LeftButton)
+
+    assert main_window.stack.currentWidget() is main_window.welcome_page
+    assert not main_window.sidebar.isVisible()
+
+
+def test_register_password_mismatch_stays_on_form(main_window: MainWindow, qtbot) -> None:
+    qtbot.mouseClick(main_window.welcome_page.register_button, Qt.MouseButton.LeftButton)
+    main_window.register_page.name_input.setText("Ada Lovelace")
+    main_window.register_page.email_input.setText("ada@example.com")
+    main_window.register_page.password_field.set_text("password123")
+    main_window.register_page.confirm_field.set_text("password456")
+    qtbot.mouseClick(main_window.register_page.submit_button, Qt.MouseButton.LeftButton)
+
+    assert main_window.stack.currentWidget() is main_window.register_page
+    assert main_window.register_page.error_label.isVisible()
+    assert main_window.register_page.error_label.text()
+    assert main_window.app_state.current_user is None
+
+
+def test_duplicate_register_shows_error(main_window: MainWindow, auth_service, qtbot) -> None:
+    auth_service.register(
+        name="Ada Lovelace",
+        email="ada@example.com",
+        password="password123",
+        confirm_password="password123",
+    )
+    main_window.app_state.clear_current_user()
+
+    qtbot.mouseClick(main_window.welcome_page.register_button, Qt.MouseButton.LeftButton)
+    main_window.register_page.name_input.setText("Ada Lovelace")
+    main_window.register_page.email_input.setText("ada@example.com")
+    main_window.register_page.password_field.set_text("password123")
+    main_window.register_page.confirm_field.set_text("password123")
+    qtbot.mouseClick(main_window.register_page.submit_button, Qt.MouseButton.LeftButton)
+
+    assert main_window.stack.currentWidget() is main_window.register_page
+    assert main_window.register_page.error_label.isVisible()
+    assert "already exists" in main_window.register_page.error_label.text().lower()
+
+
+def test_keyboard_shortcut_navigates_shell_pages(main_window: MainWindow, qtbot) -> None:
+    qtbot.mouseClick(main_window.welcome_page.guest_button, Qt.MouseButton.LeftButton)
+    main_window._shortcut_navigate("discover")
+    assert main_window.stack.currentWidget() is main_window.discover_page
+    main_window._shortcut_navigate("profile")
+    assert main_window.stack.currentWidget() is main_window.profile_page
+
+
 def test_logout_cancel_keeps_current_page(qtbot, themed_app, auth_service, app_state) -> None:
     window = MainWindow(
         auth_service=auth_service,

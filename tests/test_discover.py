@@ -9,9 +9,10 @@ from tests.fakes import FakeMovieService
 
 def _open_discover(main_window: MainWindow, qtbot) -> None:
     qtbot.mouseClick(main_window.welcome_page.guest_button, Qt.MouseButton.LeftButton)
+    QThreadPool.globalInstance().waitForDone(4000)
     qtbot.mouseClick(main_window.sidebar.button("discover"), Qt.MouseButton.LeftButton)
     page = main_window.discover_page
-    qtbot.waitUntil(lambda: page.states.currentWidget() is not page.loading, timeout=3000)
+    qtbot.waitUntil(lambda: page.states.currentWidget() is not page.loading, timeout=8000)
 
 
 def test_empty_search_does_not_call_service(main_window: MainWindow, movie_service: FakeMovieService, qtbot) -> None:

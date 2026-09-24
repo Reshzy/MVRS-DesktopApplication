@@ -6,7 +6,8 @@ from pydantic import ValidationError
 def format_validation_error(exc: ValidationError) -> str:
     messages: list[str] = []
     for error in exc.errors():
-        field = error.get("loc", (None,))[0]
+        loc = error.get("loc") or ()
+        field = loc[0] if loc else None
         raw = str(error.get("msg", "Invalid input"))
         if raw.startswith("Value error, "):
             raw = raw.removeprefix("Value error, ")

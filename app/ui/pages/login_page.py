@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QFrame, QLabel, QLineEdit, QPushButton, QVBoxLayou
 from pydantic import ValidationError
 
 from app.services.auth_service import AuthService, InvalidCredentialsError
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, XL
 from app.ui.widgets.password_field import PasswordField
 from app.utils.helpers import format_validation_error
@@ -37,24 +37,31 @@ class LoginPage(QWidget):
         self.email_input = QLineEdit()
         self.email_input.setObjectName("loginEmailInput")
         self.email_input.setPlaceholderText("Email")
+        self.email_input.setToolTip("Account email")
+        self.email_input.returnPressed.connect(self._submit)
 
         self.password_field = PasswordField("Password")
         self.password_field.setObjectName("loginPasswordField")
         self.password_field.edit.setObjectName("loginPasswordInput")
+        self.password_field.returnPressed.connect(self._submit)
 
         self.submit_button = QPushButton("Login")
         self.submit_button.setObjectName("loginSubmitButton")
         apply_property(self.submit_button, "variant", "primary")
+        style_button(self.submit_button, tooltip="Sign in")
+        self.submit_button.setDefault(True)
         self.submit_button.clicked.connect(self._submit)
 
         self.register_link = QPushButton("Create an account")
         self.register_link.setObjectName("loginRegisterLink")
         apply_property(self.register_link, "variant", "link")
+        style_button(self.register_link, tooltip="Create a new account")
         self.register_link.clicked.connect(self.register_requested.emit)
 
         self.back_link = QPushButton("Back")
         self.back_link.setObjectName("loginBackLink")
         apply_property(self.back_link, "variant", "link")
+        style_button(self.back_link, tooltip="Go back")
         self.back_link.clicked.connect(self.back_requested.emit)
 
         card = QFrame()
@@ -79,11 +86,14 @@ class LoginPage(QWidget):
         layout.addStretch()
         card.setMaximumWidth(420)
         card.setMinimumWidth(360)
+        self.setTabOrder(self.email_input, self.password_field.edit)
+        self.setTabOrder(self.password_field.edit, self.submit_button)
 
     def reset(self) -> None:
         self.email_input.clear()
         self.password_field.clear()
         self._set_error("")
+        self.email_input.setFocus()
 
     def _submit(self) -> None:
         self._set_error("")

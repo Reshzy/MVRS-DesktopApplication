@@ -6,7 +6,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QPushButton, QWidget
 
 from app.schemas.movie_schema import DiscoverFilters, GenreDTO
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import MD
 from app.ui.widgets.flow_layout import FlowLayout
 
@@ -49,15 +49,18 @@ class FilterPanel(QWidget):
 
         self.genre_combo = QComboBox()
         self.genre_combo.setObjectName("discoverGenreFilter")
+        self.genre_combo.setToolTip("Filter by genre")
         self.genre_combo.addItem("Any genre", None)
 
         self.rating_combo = QComboBox()
         self.rating_combo.setObjectName("discoverRatingFilter")
+        self.rating_combo.setToolTip("Minimum TMDB rating")
         for label, value in RATING_OPTIONS:
             self.rating_combo.addItem(label, value)
 
         self.year_combo = QComboBox()
         self.year_combo.setObjectName("discoverYearFilter")
+        self.year_combo.setToolTip("Filter by release year")
         self.year_combo.addItem("Any year", None)
         current_year = date.today().year
         for year in range(current_year, 1969, -1):
@@ -65,17 +68,20 @@ class FilterPanel(QWidget):
 
         self.language_combo = QComboBox()
         self.language_combo.setObjectName("discoverLanguageFilter")
+        self.language_combo.setToolTip("Filter by original language")
         for label, value in LANGUAGE_OPTIONS:
             self.language_combo.addItem(label, value)
 
         self.sort_combo = QComboBox()
         self.sort_combo.setObjectName("discoverSortFilter")
+        self.sort_combo.setToolTip("Sort results")
         for label, value in SORT_OPTIONS:
             self.sort_combo.addItem(label, value)
 
         self.apply_button = QPushButton("Apply filters")
         self.apply_button.setObjectName("discoverApplyButton")
         apply_property(self.apply_button, "variant", "secondary")
+        style_button(self.apply_button, tooltip="Apply the selected filters")
         self.apply_button.clicked.connect(self.applied.emit)
 
         for combo in (

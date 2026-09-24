@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 from app.schemas.movie_schema import DiscoverFilters, GenreDTO, MoviePageDTO
 from app.services.movie_service import MovieService
 from app.state.app_state import AppState
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, XL
 from app.ui.widgets.empty_state import EmptyState
 from app.ui.widgets.filter_panel import FilterPanel
@@ -25,6 +25,7 @@ from app.ui.widgets.loading_widget import LoadingWidget
 from app.ui.widgets.movie_card import MovieCard
 from app.ui.widgets.search_bar import SearchBar
 from app.ui.workers.image_worker import ImageLoader
+from app.ui.workers.signals import QUEUED
 from app.ui.workers.task_runner import TaskRunner
 
 
@@ -111,11 +112,13 @@ class DiscoverPage(QWidget):
         self.prev_button = QPushButton("Previous")
         self.prev_button.setObjectName("discoverPrevButton")
         apply_property(self.prev_button, "variant", "secondary")
+        style_button(self.prev_button, tooltip="Previous page")
         self.prev_button.clicked.connect(lambda: self._change_page(-1))
 
         self.next_button = QPushButton("Next")
         self.next_button.setObjectName("discoverNextButton")
         apply_property(self.next_button, "variant", "secondary")
+        style_button(self.next_button, tooltip="Next page")
         self.next_button.clicked.connect(lambda: self._change_page(1))
 
         self.page_label = QLabel("Page 1 of 1")
@@ -191,13 +194,24 @@ class DiscoverPage(QWidget):
         self._request_catalog(self._mode, self._query, filters)
 
     def _request_catalog(self, mode: str, query: str, filters: DiscoverFilters) -> None:
+        key = f"discover:{mode}:{query}:{filters.page}:{tuple(sorted(filters.model_dump().items()))}"
+        if self._runner.is_inflight(key):
+            return
         self._request_id += 1
+        request_id = self._request_id
         self._mode = mode
         self._query = query
         self._page_number = filters.page
         self._show_loading()
-        signals = self._runner.submit(self._catalog_job, self._request_id, mode, query, filters)
-        signals.result.connect(self._on_catalog_result)
+        signals = self._runner.submit(self._catalog_job, request_id, mode, query, filters, key=key)
+        if signals is not None:
+            signals.result.connect(self._on_catalog_result, QUEUED)
+            signals.error.connect(
+                lambda message, rid=request_id: self._on_catalog_result(
+                    _CatalogResult(rid, error=message or "Could not load movies.")
+                ),
+                QUEUED,
+            )
 
     def _catalog_job(
         self,
@@ -254,8 +268,9 @@ class DiscoverPage(QWidget):
         if self._genres_requested:
             return
         self._genres_requested = True
-        signals = self._runner.submit(self._genres_job)
-        signals.result.connect(self._on_genres)
+        signals = self._runner.submit(self._genres_job, key="discover:genres")
+        if signals is not None:
+            signals.result.connect(self._on_genres, QUEUED)
 
     def _genres_job(self) -> list[GenreDTO]:
         try:
@@ -286,3 +301,5 @@ class DiscoverPage(QWidget):
         self.page_label.setText(f"Page {self._page_number} of {self._total_pages}")
         self.prev_button.setEnabled(self._page_number > 1)
         self.next_button.setEnabled(self._page_number < self._total_pages)
+        self.prev_button.setToolTip("Previous page" if self.prev_button.isEnabled() else "Already on the first page")
+        self.next_button.setToolTip("Next page" if self.next_button.isEnabled() else "Already on the last page")

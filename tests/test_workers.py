@@ -55,6 +55,86 @@ def test_worker_emits_progress(qtbot, themed_app) -> None:
     QThreadPool.globalInstance().waitForDone(1000)
 
 
+def test_duplicate_key_does_not_start_second_job(qtbot, themed_app) -> None:
+    runner = TaskRunner()
+    started = []
+    finished = []
+
+    def job(label: str) -> str:
+        started.append(label)
+        time.sleep(0.2)
+        return label
+
+    first = runner.submit(job, "one", key="same-job")
+    second = runner.submit(job, "two", key="same-job")
+    assert first is not None
+    assert second is None
+    first.finished.connect(lambda: finished.append(True))
+
+    qtbot.waitUntil(lambda: bool(finished), timeout=2000)
+    assert started == ["one"]
+    QThreadPool.globalInstance().waitForDone(1000)
+
+
+def test_worker_finished_emits_after_error(qtbot, themed_app) -> None:
+    runner = TaskRunner()
+    errors: list[str] = []
+    finished = []
+    results: list[object] = []
+
+    def boom() -> None:
+        raise ValueError("broken worker")
+
+    signals = runner.submit(boom)
+    signals.result.connect(results.append)
+    signals.error.connect(errors.append)
+    signals.finished.connect(lambda: finished.append(True))
+
+    qtbot.waitUntil(lambda: bool(finished), timeout=2000)
+    assert results == []
+    assert "broken worker" in errors[0]
+    QThreadPool.globalInstance().waitForDone(1000)
+
+
+def test_bind_connects_result_and_error(qtbot, themed_app) -> None:
+    runner = TaskRunner()
+    results: list[object] = []
+    errors: list[str] = []
+
+    assert runner.bind(None, results.append, errors.append) is False
+
+    ok = runner.submit(lambda: 42)
+    assert runner.bind(ok, results.append, errors.append) is True
+    qtbot.waitUntil(lambda: results == [42], timeout=2000)
+
+    def boom_job() -> None:
+        raise RuntimeError("bind failed")
+
+    boom = runner.submit(boom_job)
+    assert runner.bind(boom, results.append, errors.append) is True
+    qtbot.waitUntil(lambda: bool(errors), timeout=2000)
+    assert "bind failed" in errors[0]
+    QThreadPool.globalInstance().waitForDone(1000)
+
+
+def test_is_inflight_tracks_keyed_jobs(qtbot, themed_app) -> None:
+    runner = TaskRunner()
+    finished = []
+
+    def job() -> str:
+        time.sleep(0.2)
+        return "done"
+
+    signals = runner.submit(job, key="keyed")
+    assert runner.is_inflight("keyed") is True
+    assert runner.submit(job, key="keyed") is None
+    signals.finished.connect(lambda: finished.append(True))
+
+    qtbot.waitUntil(lambda: bool(finished), timeout=2000)
+    qtbot.waitUntil(lambda: runner.is_inflight("keyed") is False, timeout=2000)
+    QThreadPool.globalInstance().waitForDone(1000)
+
+
 def test_ui_stays_responsive_during_slow_task(qtbot, themed_app) -> None:
     clicks: list[int] = []
     button = QPushButton("Click me")

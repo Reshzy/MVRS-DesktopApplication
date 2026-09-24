@@ -18,12 +18,13 @@ from app.services.history_service import HistoryService
 from app.services.movie_service import MovieService
 from app.services.recommendation_service import RecommendationService
 from app.state.app_state import AppState
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, XL
 from app.ui.widgets.dashboard_row import DashboardRow
 from app.ui.widgets.movie_card import MovieCard
 from app.ui.widgets.search_bar import SearchBar
 from app.ui.workers.image_worker import ImageLoader
+from app.ui.workers.signals import QUEUED
 from app.ui.workers.task_runner import TaskRunner
 from app.utils.constants import DASHBOARD_ROW_LIMIT
 from app.utils.logging_config import LOGGER_NAME
@@ -50,6 +51,7 @@ class DashboardPage(QWidget):
     search_requested = Signal(str)
     profile_requested = Signal()
     view_all_requested = Signal(str)
+    sign_in_requested = Signal()
 
     def __init__(
         self,
@@ -78,6 +80,7 @@ class DashboardPage(QWidget):
         self.profile_button = QPushButton("Profile")
         self.profile_button.setObjectName("dashboardProfileButton")
         apply_property(self.profile_button, "variant", "secondary")
+        style_button(self.profile_button, tooltip="Open profile", icon="profile")
         self.profile_button.clicked.connect(self.profile_requested.emit)
 
         heading = QHBoxLayout()
@@ -112,6 +115,7 @@ class DashboardPage(QWidget):
             row.movie_selected.connect(self.movie_selected.emit)
             row.view_all_requested.connect(lambda sid=section_id: self.view_all_requested.emit(sid))
             row.retry_requested.connect(lambda sid=section_id: self._load_section(sid))
+            row.sign_in_requested.connect(self.sign_in_requested.emit)
             rows_layout.addWidget(row)
             self._rows[section_id] = row
         rows_layout.addStretch()
@@ -186,6 +190,7 @@ class DashboardPage(QWidget):
         self._rows["recommended"].show_empty(
             "Sign in for personalized picks",
             "Recommendations use your ratings, likes, watch history, and preferences.",
+            action_label="Sign in",
         )
 
     def _load_section(self, section_id: str) -> None:
@@ -201,23 +206,17 @@ class DashboardPage(QWidget):
                 return
             signals = self._runner.submit(self._recommended_job, request_id, self._user_id)
         elif section_id == "continue":
-            seed_id = self._continue_seed_id()
-            signals = self._runner.submit(self._continue_job, request_id, seed_id)
+            signals = self._runner.submit(self._continue_job, request_id, self._user_id)
         else:
             signals = self._runner.submit(self._catalog_job, section_id, request_id)
-        signals.result.connect(self._on_section_result)
-
-    def _continue_seed_id(self) -> int | None:
-        if self._history_service is None or self._user_id is None:
-            return None
-        try:
-            entries = self._history_service.list_entries(self._user_id)
-        except Exception:
-            logger.exception("Failed to read watch history for dashboard continue row")
-            return None
-        if not entries:
-            return None
-        return int(entries[0].movie.tmdb_id)
+        if signals is not None:
+            signals.result.connect(self._on_section_result, QUEUED)
+            signals.error.connect(
+                lambda message, sid=section_id, rid=request_id: self._on_section_result(
+                    _SectionResult(sid, rid, error=message or "Could not load movies.")
+                ),
+                QUEUED,
+            )
 
     def _catalog_job(self, section_id: str, request_id: int) -> _SectionResult:
         try:
@@ -246,7 +245,16 @@ class DashboardPage(QWidget):
             return _SectionResult("recommended", request_id, error=message)
         return _SectionResult("recommended", request_id, movies=[item.movie for item in items])
 
-    def _continue_job(self, request_id: int, seed_tmdb_id: int | None) -> _SectionResult:
+    def _continue_job(self, request_id: int, user_id: int | None) -> _SectionResult:
+        seed_tmdb_id: int | None = None
+        if self._history_service is not None and user_id is not None:
+            try:
+                entries = self._history_service.list_entries(user_id)
+            except Exception:
+                logger.exception("Failed to read watch history for dashboard continue row")
+                entries = []
+            if entries:
+                seed_tmdb_id = int(entries[0].movie.tmdb_id)
         try:
             if seed_tmdb_id:
                 page = self._movie_service.get_similar_movies(seed_tmdb_id)

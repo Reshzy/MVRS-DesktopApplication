@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QFrame, QLabel, QLineEdit, QPushButton, QVBoxLayou
 from pydantic import ValidationError
 
 from app.services.auth_service import AuthService, DuplicateEmailError
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, XL
 from app.ui.widgets.password_field import PasswordField
 from app.utils.helpers import format_validation_error
@@ -36,27 +36,36 @@ class RegisterPage(QWidget):
         self.name_input = QLineEdit()
         self.name_input.setObjectName("registerNameInput")
         self.name_input.setPlaceholderText("Name")
+        self.name_input.setToolTip("Your display name")
+        self.name_input.returnPressed.connect(self._submit)
 
         self.email_input = QLineEdit()
         self.email_input.setObjectName("registerEmailInput")
         self.email_input.setPlaceholderText("Email")
+        self.email_input.setToolTip("A unique email for this account")
+        self.email_input.returnPressed.connect(self._submit)
 
         self.password_field = PasswordField("Password")
         self.password_field.setObjectName("registerPasswordField")
         self.password_field.edit.setObjectName("registerPasswordInput")
+        self.password_field.returnPressed.connect(self._submit)
 
         self.confirm_field = PasswordField("Confirm password")
         self.confirm_field.setObjectName("registerConfirmField")
         self.confirm_field.edit.setObjectName("registerConfirmInput")
+        self.confirm_field.returnPressed.connect(self._submit)
 
         self.submit_button = QPushButton("Register")
         self.submit_button.setObjectName("registerSubmitButton")
         apply_property(self.submit_button, "variant", "primary")
+        style_button(self.submit_button, tooltip="Create your account")
+        self.submit_button.setDefault(True)
         self.submit_button.clicked.connect(self._submit)
 
         self.login_link = QPushButton("Back to login")
         self.login_link.setObjectName("registerLoginLink")
         apply_property(self.login_link, "variant", "link")
+        style_button(self.login_link, tooltip="Return to login")
         self.login_link.clicked.connect(self.login_requested.emit)
 
         card = QFrame()
@@ -89,6 +98,7 @@ class RegisterPage(QWidget):
         self.password_field.clear()
         self.confirm_field.clear()
         self._set_error("")
+        self.name_input.setFocus()
 
     def _submit(self) -> None:
         self._set_error("")

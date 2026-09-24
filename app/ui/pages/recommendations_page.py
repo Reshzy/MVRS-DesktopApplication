@@ -16,13 +16,14 @@ from PySide6.QtWidgets import (
 from app.schemas.recommendation_schema import RecommendedMovie
 from app.services.recommendation_service import RecommendationService
 from app.state.app_state import AppState
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, SM, XL
 from app.ui.widgets.empty_state import EmptyState
 from app.ui.widgets.flow_layout import FlowLayout
 from app.ui.widgets.loading_widget import LoadingWidget
 from app.ui.widgets.movie_card import POSTER_WIDTH, MovieCard
 from app.ui.workers.image_worker import ImageLoader
+from app.ui.workers.signals import QUEUED
 from app.ui.workers.task_runner import TaskRunner
 
 
@@ -54,7 +55,7 @@ class RecommendationTile(QWidget):
         self.reason_label.setObjectName("recommendationReason")
         apply_property(self.reason_label, "role", "caption")
         self.reason_label.setWordWrap(True)
-        self.reason_label.setFixedWidth(POSTER_WIDTH)
+        self.reason_label.setFixedWidth(self.card.sizeHint().width() or POSTER_WIDTH)
         self.reason_label.setToolTip(item.reason)
 
         layout = QVBoxLayout(self)
@@ -67,6 +68,7 @@ class RecommendationTile(QWidget):
 
 class RecommendationsPage(QWidget):
     movie_selected = Signal(object)
+    sign_in_requested = Signal()
 
     def __init__(
         self,
@@ -95,6 +97,7 @@ class RecommendationsPage(QWidget):
         self.refresh_button = QPushButton("Refresh")
         self.refresh_button.setObjectName("recommendationsRefreshButton")
         apply_property(self.refresh_button, "variant", "secondary")
+        style_button(self.refresh_button, tooltip="Refresh recommendations")
         self.refresh_button.clicked.connect(self._on_refresh_clicked)
 
         heading = QHBoxLayout()
@@ -112,7 +115,9 @@ class RecommendationsPage(QWidget):
         self.guest = EmptyState(
             "Sign in for personalized picks",
             "Recommendations use your ratings, likes, watch history, and preferences.",
+            action_label="Sign in",
         )
+        self.guest.action_requested.connect(self.sign_in_requested.emit)
         self.error = EmptyState("Could not load recommendations", "Check your connection and try again.", self)
         self.error.set_content(
             "Could not load recommendations",
@@ -190,8 +195,16 @@ class RecommendationsPage(QWidget):
         self._request_id += 1
         self._profile_key = profile_key
         self._show_loading()
-        signals = self._runner.submit(self._generate_job, self._request_id, user_id)
-        signals.result.connect(self._on_result)
+        request_id = self._request_id
+        signals = self._runner.submit(self._generate_job, request_id, user_id)
+        if signals is not None:
+            signals.result.connect(self._on_result, QUEUED)
+            signals.error.connect(
+                lambda message, rid=request_id: self._on_result(
+                    _RecommendationResult(rid, error=message or "Could not generate recommendations.")
+                ),
+                QUEUED,
+            )
 
     def _generate_job(self, request_id: int, user_id: int) -> _RecommendationResult:
         if self._service is None:

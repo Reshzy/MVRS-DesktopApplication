@@ -72,8 +72,10 @@ class WatchlistPage(LibraryCollectionPage):
             self.status_label.setText(self._action_error(exc, "Could not remove this movie."))
             return
         if self._app_state is not None:
-            self.refresh(self._app_state)
-        self.status_label.setText("Removed from your watchlist." if removed else "That title was already gone.")
+            self.refresh(
+                self._app_state,
+                status="Removed from your watchlist." if removed else "That title was already gone.",
+            )
 
     def _mark_watched(self, movie: object) -> None:
         user_id = self._current_user_id()
@@ -86,8 +88,7 @@ class WatchlistPage(LibraryCollectionPage):
             self.status_label.setText(self._action_error(exc, "Could not mark this movie as watched."))
             return
         if self._app_state is not None:
-            self.refresh(self._app_state)
-        self.status_label.setText("Marked as watched.")
+            self.refresh(self._app_state, status="Marked as watched.")
 
     def _current_user_id(self) -> int | None:
         user = self._app_state.current_user if self._app_state is not None else None

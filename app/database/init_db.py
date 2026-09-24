@@ -11,6 +11,6 @@ def init_database() -> None:
     from app.models import load_models
 
     load_models()
-    logger.info("Initializing database")
+    logger.info("Initializing database url=%s", engine.url)
     Base.metadata.create_all(bind=engine)
     logger.info("Database initialized")

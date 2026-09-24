@@ -1,5 +1,9 @@
 from collections.abc import Iterator
+import os
+import tempfile
 from pathlib import Path
+
+os.environ.setdefault("MVRS_DATA_DIR", tempfile.mkdtemp(prefix="mvrs-test-"))
 
 import pytest
 from PySide6.QtCore import QThreadPool
@@ -63,6 +67,7 @@ def main_window(
         auth_service=auth_service,
         app_state=app_state,
         confirm_logout=lambda **_kwargs: True,
+        prompt_sign_in=lambda **_kwargs: False,
         movie_service=movie_service,
     )
     qtbot.addWidget(window)

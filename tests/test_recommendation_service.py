@@ -121,6 +121,12 @@ def test_all_candidate_sources_fail(db_session: Session, auth_service: AuthServi
         service.recommend_for_user(user.id)
 
 
+def test_guest_user_id_cannot_request_recommendations(db_session: Session) -> None:
+    service, _fake = _service(db_session)
+    with pytest.raises(RecommendationServiceError, match="Sign in"):
+        service.recommend_for_user(0)
+
+
 def test_discover_filters_include_release_window() -> None:
     filters = DiscoverFilters(
         with_genres="28",

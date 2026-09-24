@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtGui import QCloseEvent, QIcon, QKeySequence, QShortcut
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ from app.services.user_service import UserService
 from app.services.watchlist_service import WatchlistService
 from app.state.app_state import AppState
 from app.ui.dialogs.confirm_dialog import ConfirmDialog
+from app.ui.dialogs.sign_in_dialog import SignInDialog
 from app.ui.pages.dashboard_page import DashboardPage
 from app.ui.pages.discover_page import DiscoverPage
 from app.ui.pages.history_page import HistoryPage
@@ -30,11 +31,15 @@ from app.ui.pages.recommendations_page import RecommendationsPage
 from app.ui.pages.register_page import RegisterPage
 from app.ui.pages.watchlist_page import WatchlistPage
 from app.ui.pages.welcome_page import WelcomePage
+from app.ui.theme import apply_theme
 from app.ui.widgets.sidebar import Sidebar
 from app.ui.widgets.topbar import TopBar
 from app.ui.workers.image_worker import ImageLoader
+from app.utils.constants import DEFAULT_THEME, SIGN_IN_PROMPT_MESSAGE, SIGN_IN_PROMPT_TITLE
+from app.utils.paths import app_icon_path
 
 ConfirmFn = Callable[..., bool]
+PromptSignInFn = Callable[..., bool]
 
 SHELL_PAGES = frozenset(
     {
@@ -72,6 +77,7 @@ class MainWindow(QMainWindow):
         auth_service: AuthService | None = None,
         app_state: AppState | None = None,
         confirm_logout: ConfirmFn | None = None,
+        prompt_sign_in: PromptSignInFn | None = None,
         movie_service: MovieService | None = None,
         session: Session | None = None,
         watchlist_service: WatchlistService | None = None,
@@ -86,9 +92,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Movie Recommendation System")
         self.resize(1280, 800)
         self.setMinimumSize(960, 600)
+        icon_path = app_icon_path()
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
 
         self.app_state = app_state or AppState()
         self._confirm_logout = confirm_logout or ConfirmDialog.ask
+        self._prompt_sign_in = prompt_sign_in or SignInDialog.ask
         self._owned_session = None
         if auth_service is None:
             self._owned_session = SessionLocal()
@@ -154,7 +164,7 @@ class MainWindow(QMainWindow):
             self,
         )
         self.history_page = HistoryPage(self.history_service, self.image_loader, self)
-        self.insights_page = InsightsPage(self)
+        self.insights_page = InsightsPage(self.user_service, self)
         self.profile_page = ProfilePage(self.user_service, self)
 
         self._register_page("welcome", self.welcome_page)
@@ -191,11 +201,14 @@ class MainWindow(QMainWindow):
         self.welcome_page.guest_requested.connect(self.show_guest_dashboard)
         self.login_page.login_succeeded.connect(self.show_authenticated_home)
         self.login_page.register_requested.connect(self.show_register)
-        self.login_page.back_requested.connect(self.show_welcome)
+        self.login_page.back_requested.connect(self._return_from_auth)
         self.register_page.register_succeeded.connect(self.show_onboarding)
         self.onboarding_page.completed.connect(self._finish_onboarding)
         self.onboarding_page.cancelled.connect(self.show_profile)
         self.profile_page.edit_preferences_requested.connect(self.show_onboarding)
+        self.profile_page.name_updated.connect(self._refresh_shell_user)
+        self.profile_page.theme_changed.connect(self._apply_theme)
+        self.insights_page.movie_selected.connect(self.show_movie_details)
         self.register_page.login_requested.connect(self.show_login)
         self.sidebar.navigate_requested.connect(self.navigate)
         self.sidebar.logout_requested.connect(self.logout)
@@ -210,7 +223,15 @@ class MainWindow(QMainWindow):
         self.watchlist_page.movie_selected.connect(self.show_movie_details)
         self.history_page.movie_selected.connect(self.show_movie_details)
         self.movie_details_page.back_requested.connect(self.return_from_details)
+        self.movie_details_page.sign_in_requested.connect(self.prompt_sign_in)
+        self.dashboard_page.sign_in_requested.connect(self._open_auth_from_guest)
+        self.recommendations_page.sign_in_requested.connect(self._open_auth_from_guest)
+        self.watchlist_page.sign_in_requested.connect(self._open_auth_from_guest)
+        self.history_page.sign_in_requested.connect(self._open_auth_from_guest)
+        self.insights_page.sign_in_requested.connect(self._open_auth_from_guest)
+        self.profile_page.sign_in_requested.connect(self._open_auth_from_guest)
 
+        self._install_shortcuts()
         self.show_welcome()
 
     def navigate(self, page_id: str) -> None:
@@ -234,9 +255,12 @@ class MainWindow(QMainWindow):
         self.navigate("register")
 
     def show_onboarding(self) -> None:
+        if self.app_state.current_user is not None:
+            self._apply_user_theme()
         self.navigate("onboarding")
 
     def show_authenticated_home(self) -> None:
+        self._apply_user_theme()
         user = self.app_state.current_user
         if user is not None and not user.onboarding_completed:
             self.show_onboarding()
@@ -256,8 +280,38 @@ class MainWindow(QMainWindow):
         self.show_dashboard()
 
     def show_guest_dashboard(self) -> None:
-        self.app_state.clear_current_user()
+        self.app_state.enter_guest_mode()
+        self._apply_theme(DEFAULT_THEME)
         self.show_dashboard()
+
+    def prompt_sign_in(self) -> bool:
+        accepted = bool(
+            self._prompt_sign_in(
+                parent=self,
+                title=SIGN_IN_PROMPT_TITLE,
+                message=SIGN_IN_PROMPT_MESSAGE,
+                confirm_label="Sign in",
+                cancel_label="Keep browsing",
+                confirm_variant="primary",
+            )
+        )
+        if accepted:
+            self._open_auth_from_guest()
+        return accepted
+
+    def _open_auth_from_guest(self) -> None:
+        current = self.current_page_id()
+        if current in SHELL_PAGES:
+            self.app_state.auth_return_page = current
+        self.show_login()
+
+    def _return_from_auth(self) -> None:
+        return_page = self.app_state.auth_return_page
+        if self.app_state.guest_mode and return_page in self._pages:
+            self.app_state.auth_return_page = None
+            self.navigate(return_page)
+            return
+        self.show_welcome()
 
     def show_discover(self) -> None:
         self.navigate("discover")
@@ -303,10 +357,52 @@ class MainWindow(QMainWindow):
         if not confirmed:
             return
         self.app_state.clear_current_user()
+        self._apply_theme(DEFAULT_THEME)
         self.navigate("welcome")
 
     def current_page_id(self) -> str | None:
         return self._page_ids.get(self.stack.currentWidget())
+
+    def _install_shortcuts(self) -> None:
+        self.search_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
+        self.search_shortcut.activated.connect(self._focus_search)
+        self._nav_shortcuts: dict[str, QShortcut] = {}
+        for index, page_id in enumerate(
+            ("home", "discover", "recommendations", "watchlist", "history", "insights", "profile"),
+            start=1,
+        ):
+            shortcut = QShortcut(QKeySequence(f"Ctrl+{index}"), self)
+            shortcut.activated.connect(lambda dest=page_id: self._shortcut_navigate(dest))
+            self._nav_shortcuts[page_id] = shortcut
+
+    def _shortcut_navigate(self, page_id: str) -> None:
+        if self.current_page_id() in SHELL_PAGES:
+            self.navigate(page_id)
+
+    def _focus_search(self) -> None:
+        if not self.topbar.isVisible():
+            return
+        self.topbar.search_input.setFocus()
+        self.topbar.search_input.selectAll()
+
+    def _refresh_shell_user(self) -> None:
+        self.topbar.set_user(self.app_state.current_user)
+
+    def _apply_user_theme(self) -> None:
+        theme = DEFAULT_THEME
+        user = self.app_state.current_user
+        if user is not None and self.user_service is not None:
+            try:
+                theme = self.user_service.get_theme(user.id)
+            except Exception:
+                theme = DEFAULT_THEME
+        self._apply_theme(theme)
+
+    def _apply_theme(self, theme: str) -> None:
+        self.app_state.theme = theme
+        app = QApplication.instance()
+        if isinstance(app, QApplication):
+            apply_theme(app, theme)
 
     def _register_page(self, page_id: str, page: QWidget) -> None:
         self._pages[page_id] = page
@@ -326,6 +422,7 @@ class MainWindow(QMainWindow):
             else:
                 sidebar_id = page_id
             self.sidebar.set_current(sidebar_id)
+            self.sidebar.set_session_mode(self.app_state.is_authenticated)
             self.topbar.set_title(PAGE_TITLES[page_id])
             self.topbar.set_user(self.app_state.current_user)
         title = PAGE_TITLES.get(page_id, page_id.title())

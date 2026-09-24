@@ -6,7 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config.settings import PROJECT_ROOT, get_settings
+from app.config.settings import get_settings
+from app.utils.paths import app_data_dir
 
 
 def _resolve_database_url(database_url: str) -> str:
@@ -15,11 +16,13 @@ def _resolve_database_url(database_url: str) -> str:
         return database_url
 
     raw_path = database_url.removeprefix(prefix)
-    if raw_path.startswith("/") or (len(raw_path) > 1 and raw_path[1] == ":"):
-        return database_url
-
-    resolved = (PROJECT_ROOT / Path(raw_path)).resolve()
-    return f"{prefix}{resolved.as_posix()}"
+    path = Path(raw_path)
+    if path.is_absolute() or (len(raw_path) > 1 and raw_path[1] == ":"):
+        resolved = path
+    else:
+        resolved = app_data_dir() / path
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    return f"{prefix}{resolved.resolve().as_posix()}"
 
 
 def create_db_engine() -> Engine:

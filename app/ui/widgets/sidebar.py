@@ -1,17 +1,17 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QButtonGroup, QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from app.ui.theme import apply_property
-from app.ui.theme.spacing import LG, SM
+from app.ui.theme import apply_property, style_button
+from app.ui.theme.spacing import LG, SM, XS
 
-NAV_ITEMS: tuple[tuple[str, str], ...] = (
-    ("home", "Home"),
-    ("discover", "Discover"),
-    ("recommendations", "Recommendations"),
-    ("watchlist", "Watchlist"),
-    ("history", "History"),
-    ("insights", "Insights"),
-    ("profile", "Profile"),
+NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
+    ("home", "Home", "Ctrl+1"),
+    ("discover", "Discover", "Ctrl+2"),
+    ("recommendations", "Recommendations", "Ctrl+3"),
+    ("watchlist", "Watchlist", "Ctrl+4"),
+    ("history", "History", "Ctrl+5"),
+    ("insights", "Insights", "Ctrl+6"),
+    ("profile", "Profile", "Ctrl+7"),
 )
 
 
@@ -26,6 +26,10 @@ class Sidebar(QFrame):
 
         title = QLabel("MVRS")
         apply_property(title, "role", "heading")
+        title.setToolTip("Movie Recommendation System")
+
+        caption = QLabel("Cinema desk")
+        apply_property(caption, "role", "caption")
 
         self._buttons: dict[str, QPushButton] = {}
         self._group = QButtonGroup(self)
@@ -35,14 +39,17 @@ class Sidebar(QFrame):
         layout.setContentsMargins(LG, LG, LG, LG)
         layout.setSpacing(SM)
         layout.addWidget(title)
+        layout.addWidget(caption)
+        layout.addSpacing(XS)
 
-        for page_id, label in NAV_ITEMS:
+        for page_id, label, shortcut in NAV_ITEMS:
             button = QPushButton(label)
             button.setObjectName(f"sidebar{label.replace(' ', '')}Button")
             button.setCheckable(True)
-            button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.setMinimumHeight(36)
+            button.setMinimumHeight(40)
+            button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             apply_property(button, "variant", "nav")
+            style_button(button, tooltip=f"{label} ({shortcut})", icon=page_id)
             button.clicked.connect(lambda _checked=False, dest=page_id: self.navigate_requested.emit(dest))
             self._group.addButton(button)
             self._buttons[page_id] = button
@@ -52,8 +59,9 @@ class Sidebar(QFrame):
 
         self.logout_button = QPushButton("Logout")
         self.logout_button.setObjectName("sidebarLogoutButton")
-        self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.logout_button.setMinimumHeight(40)
         apply_property(self.logout_button, "variant", "muted")
+        style_button(self.logout_button, tooltip="Return to the welcome screen", icon="logout")
         self.logout_button.clicked.connect(self.logout_requested.emit)
         layout.addWidget(self.logout_button)
 
@@ -72,3 +80,7 @@ class Sidebar(QFrame):
             return
         button.setChecked(True)
         apply_property(button, "variant", "nav")
+
+    def set_session_mode(self, signed_in: bool) -> None:
+        self.logout_button.setText("Logout" if signed_in else "Exit")
+        self.logout_button.setToolTip("Log out of your account" if signed_in else "Leave guest browsing")

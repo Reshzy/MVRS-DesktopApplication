@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
 from app.api.tmdb_client import TMDBClient
+from app.database.locks import session_lock
 from app.database.session import session_scope
 from app.repositories.movie_repository import MovieRepository
 from app.schemas.movie_schema import (
@@ -141,7 +142,7 @@ class MovieService:
         if not self._cache_enabled:
             return
         try:
-            with self._cache_lock:
+            with self._cache_lock, session_lock():
                 if self._repository is not None:
                     action(self._repository)
                     if self._session is not None:

@@ -1,12 +1,16 @@
 import os
 from functools import lru_cache
-from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(PROJECT_ROOT / ".env")
+from app.utils.paths import env_file_candidates, project_root
+
+PROJECT_ROOT = project_root()
+
+for _env_path in env_file_candidates():
+    if _env_path.exists():
+        load_dotenv(_env_path, override=False)
 
 
 class Settings(BaseModel):

@@ -6,7 +6,8 @@ from app.models.rating import Rating
 from app.repositories.movie_repository import MovieRepository
 from app.repositories.rating_repository import RatingRepository
 from app.schemas.movie_schema import MovieSummaryDTO
-from app.services.library_base import LibraryError, UserMovieActionService
+from app.database.locks import session_guard
+from app.services.library_base import LibraryError, UserMovieActionService, require_signed_in_user
 from app.utils.constants import MAX_RATING, MIN_RATING
 
 
@@ -15,7 +16,9 @@ class RatingService(UserMovieActionService):
         super().__init__(session, movie_repository)
         self._ratings = RatingRepository(session)
 
+    @session_guard
     def set_rating(self, user_id: int, movie: MovieSummaryDTO, rating: int) -> Rating:
+        user_id = require_signed_in_user(user_id)
         if rating < MIN_RATING or rating > MAX_RATING:
             raise LibraryError(f"Rating must be between {MIN_RATING} and {MAX_RATING}.")
         stored = self._resolve_movie(movie)
@@ -23,6 +26,7 @@ class RatingService(UserMovieActionService):
         self._commit()
         return item
 
+    @session_guard
     def get_rating(self, user_id: int, tmdb_id: int) -> int | None:
         movie_id = self._movie_id_for_tmdb(tmdb_id)
         if movie_id is None:
@@ -30,5 +34,6 @@ class RatingService(UserMovieActionService):
         item = self._ratings.get(user_id, movie_id)
         return item.rating if item is not None else None
 
+    @session_guard
     def list_for_user(self, user_id: int) -> list[Rating]:
         return self._ratings.list_for_user(user_id)

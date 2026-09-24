@@ -40,7 +40,7 @@ def test_watchlist_page_lists_removes_and_marks_watched(
 
     qtbot.mouseClick(main_window.sidebar.button("watchlist"), Qt.MouseButton.LeftButton)
     page = main_window.watchlist_page
-    assert page.states.currentWidget() is page.scroll
+    qtbot.waitUntil(lambda: page.states.currentWidget() is page.scroll, timeout=3000)
     assert len(page.tiles) == 1
     assert page.tiles[0].card.movie.title == "Fight Club"
     assert page.tiles[0].watched_button.text() == "Mark Watched"
@@ -49,12 +49,15 @@ def test_watchlist_page_lists_removes_and_marks_watched(
     qtbot.mouseClick(page.tiles[0].watched_button, Qt.MouseButton.LeftButton)
     assert main_window.history_service is not None
     assert main_window.history_service.has_watched(user.id, movie.tmdb_id)
-    assert page.tiles[0].watched_button.text() == "Watched"
+    qtbot.waitUntil(
+        lambda: bool(page.tiles) and page.tiles[0].watched_button.text() == "Watched",
+        timeout=3000,
+    )
     assert "Marked as watched" in page.status_label.text()
 
     qtbot.mouseClick(page.tiles[0].remove_button, Qt.MouseButton.LeftButton)
+    qtbot.waitUntil(lambda: page.states.currentWidget() is page.empty, timeout=3000)
     assert page.tiles == []
-    assert page.states.currentWidget() is page.empty
     assert main_window.watchlist_service.is_saved(user.id, movie.tmdb_id) is False
 
 
@@ -67,7 +70,9 @@ def test_watchlist_card_opens_details_and_keeps_sidebar(
     main_window.watchlist_service.add(user.id, movie)
 
     qtbot.mouseClick(main_window.sidebar.button("watchlist"), Qt.MouseButton.LeftButton)
-    qtbot.mouseClick(main_window.watchlist_page.tiles[0].card, Qt.MouseButton.LeftButton)
+    page = main_window.watchlist_page
+    qtbot.waitUntil(lambda: bool(page.tiles), timeout=3000)
+    qtbot.mouseClick(page.tiles[0].card, Qt.MouseButton.LeftButton)
     details = main_window.movie_details_page
     qtbot.waitUntil(lambda: details.states.currentWidget() is details.content, timeout=3000)
 
@@ -88,7 +93,7 @@ def test_history_page_shows_date_rating_and_opens_details(
 
     qtbot.mouseClick(main_window.sidebar.button("history"), Qt.MouseButton.LeftButton)
     page = main_window.history_page
-    assert page.states.currentWidget() is page.scroll
+    qtbot.waitUntil(lambda: page.states.currentWidget() is page.scroll, timeout=3000)
     assert len(page.tiles) == 1
     assert page.tiles[0].card.movie.title == "Fight Club"
     assert "Watched" in page.tiles[0].meta_label.text()

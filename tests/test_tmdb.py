@@ -139,6 +139,21 @@ def test_connection_error_is_wrapped() -> None:
         _service(handler).get_popular_movies()
 
 
+def test_server_error_and_unexpected_payload() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/movie/popular"):
+            return httpx.Response(500, json={"status_message": "boom"})
+        return httpx.Response(200, json=["not-an-object"])
+
+    service = _service(handler)
+    with pytest.raises(TMDBAPIError) as server:
+        service.get_popular_movies()
+    assert server.value.status_code == 500
+
+    with pytest.raises(TMDBAPIError):
+        service.get_trending_movies()
+
+
 def test_api_error_and_missing_movie() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/movie/1"):

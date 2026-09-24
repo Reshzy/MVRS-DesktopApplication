@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -26,7 +26,7 @@ from app.services.movie_service import MovieService
 from app.services.rating_service import RatingService
 from app.services.watchlist_service import WatchlistService
 from app.state.app_state import AppState
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, SM, XL
 from app.ui.widgets.empty_state import EmptyState
 from app.ui.widgets.flow_layout import FlowLayout
@@ -35,8 +35,16 @@ from app.ui.widgets.movie_card import MovieCard, format_rating, format_release_y
 from app.ui.widgets.poster_placeholder import poster_placeholder
 from app.ui.widgets.rating_widget import RatingWidget
 from app.ui.workers.image_worker import ImageLoader
+from app.ui.workers.signals import QUEUED
 from app.ui.workers.task_runner import TaskRunner
-from app.utils.constants import DISLIKE, LANGUAGE_NAMES, LIKE, MAX_RATING, NOT_INTERESTED
+from app.utils.constants import (
+    DISLIKE,
+    LANGUAGE_NAMES,
+    LIKE,
+    MAX_RATING,
+    NOT_INTERESTED,
+    SIGN_IN_STATUS_MESSAGE,
+)
 from app.utils.logging_config import LOGGER_NAME
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -46,13 +54,14 @@ DETAILS_POSTER_HEIGHT = 300
 BACKDROP_HEIGHT = 200
 SIMILAR_POSTER_WIDTH = 120
 SIMILAR_POSTER_HEIGHT = 180
-SIGN_IN_MESSAGE = "Sign in to save watchlist, ratings, and watch history."
+SIGN_IN_MESSAGE = SIGN_IN_STATUS_MESSAGE
 
 
 @dataclass
 class _DetailsResult:
     request_id: int
     bundle: MovieDetailsBundle | None = None
+    user_state: MovieUserState | None = None
     error: str | None = None
 
 
@@ -75,6 +84,7 @@ def format_language(code: str | None) -> str:
 
 class MovieDetailsPage(QWidget):
     back_requested = Signal()
+    sign_in_requested = Signal()
 
     def __init__(
         self,
@@ -109,7 +119,11 @@ class MovieDetailsPage(QWidget):
         self.back_button = QPushButton("Back")
         self.back_button.setObjectName("movieDetailsBackButton")
         apply_property(self.back_button, "variant", "secondary")
+        style_button(self.back_button, tooltip="Go back (Esc)", icon="back")
         self.back_button.clicked.connect(self._on_back)
+        self._escape = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
+        self._escape.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._escape.activated.connect(self.go_back)
 
         self.title_label = QLabel("Movie details")
         self.title_label.setObjectName("movieDetailsTitle")
@@ -185,26 +199,31 @@ class MovieDetailsPage(QWidget):
         self.watchlist_button = QPushButton("Add to Watchlist")
         self.watchlist_button.setObjectName("movieDetailsWatchlistButton")
         apply_property(self.watchlist_button, "variant", "primary")
+        style_button(self.watchlist_button, tooltip="Save this title to your watchlist", icon="watchlist")
         self.watchlist_button.clicked.connect(self._toggle_watchlist)
 
         self.watched_button = QPushButton("Mark Watched")
         self.watched_button.setObjectName("movieDetailsWatchedButton")
         apply_property(self.watched_button, "variant", "secondary")
+        style_button(self.watched_button, tooltip="Mark this title as watched", icon="history")
         self.watched_button.clicked.connect(self._mark_watched)
 
         self.like_button = QPushButton("Like")
         self.like_button.setObjectName("movieDetailsLikeButton")
         apply_property(self.like_button, "variant", "secondary")
+        style_button(self.like_button, tooltip="Like this title")
         self.like_button.clicked.connect(lambda: self._toggle_interaction("like"))
 
         self.dislike_button = QPushButton("Dislike")
         self.dislike_button.setObjectName("movieDetailsDislikeButton")
         apply_property(self.dislike_button, "variant", "secondary")
+        style_button(self.dislike_button, tooltip="Dislike this title")
         self.dislike_button.clicked.connect(lambda: self._toggle_interaction("dislike"))
 
         self.not_interested_button = QPushButton("Not Interested")
         self.not_interested_button.setObjectName("movieDetailsNotInterestedButton")
         apply_property(self.not_interested_button, "variant", "muted")
+        style_button(self.not_interested_button, tooltip="Hide this title from recommendations")
         self.not_interested_button.clicked.connect(lambda: self._toggle_interaction("not_interested"))
 
         actions = QHBoxLayout()
@@ -307,6 +326,9 @@ class MovieDetailsPage(QWidget):
             return
         self._begin_load(movie)
 
+    def go_back(self) -> None:
+        self._on_back()
+
     def _on_back(self) -> None:
         if self._detail_stack:
             previous = self._detail_stack.pop()
@@ -332,17 +354,35 @@ class MovieDetailsPage(QWidget):
             self._show_error("Movie details are unavailable.")
             return
         self._request_id += 1
-        signals = self._runner.submit(self._details_job, self._request_id, movie.tmdb_id)
-        signals.result.connect(self._on_details_result)
+        request_id = self._request_id
+        signals = self._runner.submit(
+            self._details_job,
+            request_id,
+            movie.tmdb_id,
+            self._current_user_id(),
+            key=f"details:{movie.tmdb_id}:{request_id}",
+        )
+        if signals is not None:
+            signals.result.connect(self._on_details_result, QUEUED)
+            signals.error.connect(
+                lambda message, rid=request_id: self._on_details_result(
+                    _DetailsResult(rid, error=message or "Could not load movie details.")
+                ),
+                QUEUED,
+            )
 
-    def _details_job(self, request_id: int, tmdb_id: int) -> _DetailsResult:
+    def _details_job(self, request_id: int, tmdb_id: int, user_id: int | None) -> _DetailsResult:
         try:
             assert self._movie_service is not None
             bundle = self._movie_service.get_details_bundle(tmdb_id)
         except Exception as exc:
             message = str(exc).strip() or "Could not load movie details."
             return _DetailsResult(request_id, error=message)
-        return _DetailsResult(request_id, bundle=bundle)
+        return _DetailsResult(
+            request_id,
+            bundle=bundle,
+            user_state=self._compute_user_state(user_id, bundle.details),
+        )
 
     @Slot(object)
     def _on_details_result(self, payload: object) -> None:
@@ -352,6 +392,7 @@ class MovieDetailsPage(QWidget):
             self._show_error(payload.error or "Could not load movie details.")
             return
         try:
+            self._user_state = payload.user_state or MovieUserState()
             self._render_bundle(payload.bundle)
         except Exception as exc:
             logger.exception("Failed to render movie details")
@@ -371,7 +412,6 @@ class MovieDetailsPage(QWidget):
         self.cast_label.setText(self._cast_text(bundle.credits))
         self._load_images(details)
         self._render_similar(details.tmdb_id, bundle.similar)
-        self._refresh_user_state()
         self._apply_user_state()
         self.states.setCurrentWidget(self.content)
 
@@ -432,14 +472,15 @@ class MovieDetailsPage(QWidget):
 
     def _refresh_user_state(self) -> None:
         movie = self._current_movie()
-        user_id = self._current_user_id()
+        self._user_state = self._compute_user_state(self._current_user_id(), movie)
+
+    def _compute_user_state(self, user_id: int | None, movie: MovieSummaryDTO | None) -> MovieUserState:
         if movie is None or user_id is None:
-            self._user_state = MovieUserState()
-            return
+            return MovieUserState()
         types: set[str] = set()
         if self._interaction_service is not None:
             types = self._interaction_service.types_for_movie(user_id, movie.tmdb_id)
-        self._user_state = MovieUserState(
+        return MovieUserState(
             on_watchlist=bool(self._watchlist_service and self._watchlist_service.is_saved(user_id, movie.tmdb_id)),
             watched=bool(self._history_service and self._history_service.has_watched(user_id, movie.tmdb_id)),
             rating=self._rating_service.get_rating(user_id, movie.tmdb_id) if self._rating_service else None,
@@ -453,11 +494,20 @@ class MovieDetailsPage(QWidget):
         state = self._user_state
         self.watchlist_button.setText("Remove from Watchlist" if state.on_watchlist else "Add to Watchlist")
         apply_property(self.watchlist_button, "variant", "secondary" if state.on_watchlist else "primary")
+        self.watchlist_button.setToolTip(
+            "Remove this title from your watchlist" if state.on_watchlist else "Save this title to your watchlist"
+        )
         self.watched_button.setText("Watched" if state.watched else "Mark Watched")
         apply_property(self.watched_button, "selected", "true" if state.watched else "false")
+        self.watched_button.setToolTip("Already marked as watched" if state.watched else "Mark this title as watched")
         apply_property(self.like_button, "selected", "true" if state.liked else "false")
+        self.like_button.setToolTip("Remove like" if state.liked else "Like this title")
         apply_property(self.dislike_button, "selected", "true" if state.disliked else "false")
+        self.dislike_button.setToolTip("Remove dislike" if state.disliked else "Dislike this title")
         apply_property(self.not_interested_button, "selected", "true" if state.not_interested else "false")
+        self.not_interested_button.setToolTip(
+            "Allow this title in recommendations" if state.not_interested else "Hide this title from recommendations"
+        )
         self.rating_widget.set_rating(state.rating)
         if not signed_in:
             self.status_label.setText(SIGN_IN_MESSAGE)
@@ -466,6 +516,7 @@ class MovieDetailsPage(QWidget):
         user_id = self._current_user_id()
         if user_id is None:
             self.status_label.setText(SIGN_IN_MESSAGE)
+            self.sign_in_requested.emit()
             return None
         return user_id
 

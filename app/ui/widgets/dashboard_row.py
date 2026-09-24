@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.schemas.movie_schema import MovieSummaryDTO
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, SM
 from app.ui.widgets.empty_state import EmptyState
 from app.ui.widgets.loading_widget import LoadingWidget
@@ -26,6 +26,7 @@ class DashboardRow(QWidget):
     movie_selected = Signal(object)
     view_all_requested = Signal()
     retry_requested = Signal()
+    sign_in_requested = Signal()
 
     def __init__(
         self,
@@ -47,6 +48,7 @@ class DashboardRow(QWidget):
         self.view_all_button = QPushButton(view_all_label, self)
         self.view_all_button.setObjectName(f"dashboardViewAll_{section_id}")
         apply_property(self.view_all_button, "variant", "link")
+        style_button(self.view_all_button, tooltip=f"Open the full {title.lower()} list")
         self.view_all_button.clicked.connect(self.view_all_requested.emit)
 
         header = QHBoxLayout()
@@ -59,6 +61,7 @@ class DashboardRow(QWidget):
         self.loading.setObjectName(f"dashboardRowLoading_{section_id}")
         self.empty = EmptyState("Nothing here yet", "Browse Discover for more titles.")
         self.empty.setObjectName(f"dashboardRowEmpty_{section_id}")
+        self.empty.action_requested.connect(self.sign_in_requested.emit)
         self.error = EmptyState("Could not load this row", "Check your connection and try again.")
         self.error.setObjectName(f"dashboardRowError_{section_id}")
         self.error.set_content("Could not load this row", "Check your connection and try again.", retry=True)
@@ -110,9 +113,16 @@ class DashboardRow(QWidget):
         self.error.set_content("Could not load this row", message, retry=True)
         self.states.setCurrentWidget(self.error)
 
-    def show_empty(self, title: str, message: str, *, retry: bool = False) -> None:
+    def show_empty(
+        self,
+        title: str,
+        message: str,
+        *,
+        retry: bool = False,
+        action_label: str | None = None,
+    ) -> None:
         self.view_all_button.setEnabled(True)
-        self.empty.set_content(title, message, retry=retry)
+        self.empty.set_content(title, message, retry=retry, action_label=action_label)
         self.states.setCurrentWidget(self.empty)
 
     def show_movies(self, movies: list[MovieSummaryDTO], image_loader: ImageLoader | None) -> None:

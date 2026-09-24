@@ -1,7 +1,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QWidget
 
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import MD
 
 
@@ -16,11 +16,14 @@ class SearchBar(QWidget):
         self.input.setObjectName("discoverSearchInput")
         self.input.setPlaceholderText("Search by title")
         self.input.setClearButtonEnabled(True)
+        self.input.setToolTip("Search movies by title")
+        self.input.setAccessibleName("Search movies")
         self.input.returnPressed.connect(self.submit)
 
         self.button = QPushButton("Search")
         self.button.setObjectName("discoverSearchButton")
         apply_property(self.button, "variant", "primary")
+        style_button(self.button, tooltip="Search movies", icon="search")
         self.button.clicked.connect(self.submit)
 
         layout = QHBoxLayout(self)

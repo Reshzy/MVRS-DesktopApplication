@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from app.ui.theme import apply_property
+from app.ui.theme import apply_property, style_button
 from app.ui.theme.spacing import LG, MD, XL
 from app.ui.widgets.rating_widget import RatingWidget
 from app.utils.constants import MAX_RATING
@@ -35,13 +35,18 @@ class RatingDialog(QDialog):
         self.save_button = QPushButton("Save rating")
         self.save_button.setObjectName("ratingDialogSave")
         apply_property(self.save_button, "variant", "primary")
+        style_button(self.save_button, tooltip="Save this rating")
+        self.save_button.setDefault(True)
         self.save_button.clicked.connect(self._save)
         self.save_button.setEnabled(self.rating_widget.rating() > 0)
 
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setObjectName("ratingDialogCancel")
         apply_property(self.cancel_button, "variant", "secondary")
+        style_button(self.cancel_button, tooltip="Cancel without saving")
+        self.cancel_button.setAutoDefault(False)
         self.cancel_button.clicked.connect(self.reject)
+        self.rating_widget.stars[0].setFocus()
 
         self.rating_widget.ratingChanged.connect(self._on_rating_changed)
 

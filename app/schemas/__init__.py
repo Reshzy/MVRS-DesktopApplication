@@ -5,6 +5,7 @@ from app.schemas.user_schema import (
     ProfileUpdateRequest,
     UserPreferences,
 )
+from app.schemas.insights_schema import ActivityItemDTO, InsightsDTO, RatedMovieDTO
 from app.schemas.library_schema import HistoryEntryDTO, MovieUserState, WatchlistEntryDTO
 from app.schemas.recommendation_schema import RecommendedMovie
 from app.schemas.movie_schema import (
@@ -18,10 +19,12 @@ from app.schemas.movie_schema import (
 )
 
 __all__ = [
+    "ActivityItemDTO",
     "CreditsDTO",
     "DiscoverFilters",
     "GenreDTO",
     "GenrePreference",
+    "InsightsDTO",
     "LoginRequest",
     "MovieDetailsBundle",
     "MovieDetailsDTO",
@@ -31,6 +34,7 @@ __all__ = [
     "HistoryEntryDTO",
     "MovieUserState",
     "ProfileUpdateRequest",
+    "RatedMovieDTO",
     "RecommendedMovie",
     "RegisterRequest",
     "UserPreferences",

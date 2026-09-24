@@ -50,6 +50,10 @@ QLabel[role="caption"] {{
 QLabel[role="error"] {{
     font-size: {BODY_SIZE}px;
     color: {DANGER};
+    padding: {SM}px {MD}px;
+    background-color: {SURFACE_RAISED};
+    border: 1px solid {DANGER};
+    border-radius: {RADIUS}px;
 }}
 
 QPushButton {{
@@ -69,6 +73,11 @@ QPushButton:pressed {{
 }}
 
 QPushButton:focus {{
+    border: 1px solid {FOCUS};
+    outline: none;
+}}
+
+QPushButton:default {{
     border: 1px solid {FOCUS};
 }}
 
@@ -194,7 +203,8 @@ QFrame#movieCard[hovered="true"] {{
 }}
 
 QFrame#movieCard:focus {{
-    border: 1px solid {FOCUS};
+    border: 2px solid {FOCUS};
+    background-color: {SURFACE_RAISED};
 }}
 
 QLabel#moviePoster {{
@@ -225,13 +235,21 @@ QFrame[role="sidebar"], QWidget#sidebar {{
 QWidget#topBar {{
     background-color: {SURFACE};
     border-bottom: 1px solid {BORDER};
-    min-height: 64px;
+    min-height: 68px;
+}}
+
+QLabel#topBarTitle {{
+    font-weight: {HEADING_WEIGHT};
+}}
+
+QLineEdit#topBarSearch {{
+    min-height: 36px;
 }}
 
 QPushButton[variant="nav"] {{
     background-color: transparent;
     color: {TEXT_SECONDARY};
-    border: none;
+    border: 1px solid transparent;
     border-radius: {RADIUS}px;
     padding: {MD}px {LG}px;
     text-align: left;
@@ -240,9 +258,22 @@ QPushButton[variant="nav"] {{
 QPushButton[variant="nav"]:hover {{
     background-color: {SECONDARY};
     color: {TEXT_PRIMARY};
+    border-color: {BORDER};
+}}
+
+QPushButton[variant="nav"]:focus {{
+    border: 1px solid {FOCUS};
+    color: {TEXT_PRIMARY};
 }}
 
 QPushButton[variant="nav"]:checked {{
+    background-color: {SURFACE_RAISED};
+    color: {ACCENT};
+    border: 1px solid {BORDER};
+    font-weight: {HEADING_WEIGHT};
+}}
+
+QPushButton[variant="nav"]:checked:hover {{
     background-color: {SECONDARY};
     color: {ACCENT};
 }}
@@ -282,6 +313,10 @@ QDialog, QMessageBox {{
 
 QDialog QLabel, QMessageBox QLabel {{
     color: {TEXT_PRIMARY};
+}}
+
+QDialog QLabel[role="heading"] {{
+    font-size: {HEADING_SIZE}px;
 }}
 
 QScrollArea {{
@@ -349,6 +384,23 @@ QWidget#loadingWidget, QWidget#emptyState {{
     background-color: transparent;
 }}
 
+QLabel#emptyStateIcon, QLabel#loadingIcon {{
+    color: {TEXT_MUTED};
+}}
+
+QProgressBar#loadingProgress {{
+    background-color: {SURFACE_RAISED};
+    border: 1px solid {BORDER};
+    border-radius: 4px;
+    min-height: 6px;
+    max-height: 6px;
+}}
+
+QProgressBar#loadingProgress::chunk {{
+    background-color: {ACCENT};
+    border-radius: 4px;
+}}
+
 QPushButton[variant="chip"] {{
     padding: {SM}px {MD}px;
     border-radius: 16px;
@@ -412,4 +464,23 @@ QLabel#dashboardSubtitle {{
 QScrollArea#dashboardScroll {{
     background-color: transparent;
     border: none;
+}}
+
+QLabel[role="stat"] {{
+    font-size: {TITLE_SIZE}px;
+    font-weight: {TITLE_WEIGHT};
+    color: {ACCENT};
+}}
+
+QWidget#profilePage, QWidget#insightsPage, QWidget#profileContent, QWidget#insightsContent {{
+    background-color: transparent;
+}}
+
+QScrollArea#profileScroll, QScrollArea#insightsScroll {{
+    background-color: transparent;
+    border: none;
+}}
+
+QFrame#profileAccountCard, QFrame#profilePreferencesCard, QFrame#profileAppearanceCard {{
+    background-color: {SURFACE};
 }}
