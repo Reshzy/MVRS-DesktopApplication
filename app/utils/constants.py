@@ -55,3 +55,18 @@ MAX_FAVORITE_MOVIES: Final[int] = 8
 MAX_INTERESTS: Final[int] = 8
 MAX_INTEREST_LENGTH: Final[int] = 40
 PREFERENCE_VALUE_LIMIT: Final[int] = 255
+
+RECOMMENDATION_WEIGHTS: Final[dict[str, float]] = {
+    "genre_similarity": 0.35,
+    "favorite_movie_similarity": 0.25,
+    "tmdb_rating_score": 0.15,
+    "popularity_score": 0.10,
+    "release_preference_score": 0.05,
+    "interaction_score": 0.10,
+}
+
+DISLIKE_PENALTY: Final[float] = 0.35
+WATCHED_PENALTY: Final[float] = 0.15
+HIGH_RATING_THRESHOLD: Final[int] = 4
+DEFAULT_RECOMMENDATION_LIMIT: Final[int] = 20
+CONTENT_MATCH_THRESHOLD: Final[float] = 0.08
