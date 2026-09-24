@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLay
 
 from app.database.session import SessionLocal
 from app.services.auth_service import AuthService
+from app.services.movie_service import MovieService
 from app.state.app_state import AppState
 from app.ui.dialogs.confirm_dialog import ConfirmDialog
 from app.ui.pages.dashboard_page import DashboardPage
@@ -63,8 +64,10 @@ class MainWindow(QMainWindow):
         if auth_service is None:
             self._owned_session = SessionLocal()
             self.auth_service = AuthService(self._owned_session, self.app_state)
+            self.movie_service = MovieService(session=self._owned_session)
         else:
             self.auth_service = auth_service
+            self.movie_service = MovieService(cache_enabled=False)
 
         self.sidebar = Sidebar(self)
         self.topbar = TopBar(self)
@@ -191,6 +194,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"Movie Recommendation System — {title}")
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self.movie_service.close()
         if self._owned_session is not None:
             self._owned_session.close()
         super().closeEvent(event)

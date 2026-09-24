@@ -36,7 +36,10 @@ def _service(handler) -> MovieService:
         transport=httpx.MockTransport(handler),
         headers={"Accept": "application/json"},
     )
-    return MovieService(TMDBClient(settings=settings, http_client=http_client))
+    return MovieService(
+        TMDBClient(settings=settings, http_client=http_client),
+        cache_enabled=False,
+    )
 
 
 def test_search_movies_returns_dtos() -> None:

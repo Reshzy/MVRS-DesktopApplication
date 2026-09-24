@@ -182,6 +182,39 @@ QFrame[role="card"] {{
     border-radius: {RADIUS_CARD}px;
 }}
 
+QFrame#movieCard {{
+    background-color: {SURFACE};
+    border: 1px solid {BORDER};
+    border-radius: {RADIUS_CARD}px;
+}}
+
+QFrame#movieCard[hovered="true"] {{
+    background-color: {SURFACE_RAISED};
+    border: 1px solid {ACCENT};
+}}
+
+QFrame#movieCard:focus {{
+    border: 1px solid {FOCUS};
+}}
+
+QLabel#moviePoster {{
+    background-color: {SURFACE_RAISED};
+    border-radius: {RADIUS}px;
+    color: {TEXT_MUTED};
+}}
+
+QLabel#movieCardTitle {{
+    color: {TEXT_PRIMARY};
+}}
+
+QLabel#movieCardYear {{
+    color: {TEXT_MUTED};
+}}
+
+QLabel#movieCardRating {{
+    color: {ACCENT};
+}}
+
 QFrame[role="sidebar"], QWidget#sidebar {{
     background-color: {SURFACE};
     border-right: 1px solid {BORDER};
