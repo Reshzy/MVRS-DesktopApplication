@@ -46,7 +46,11 @@ def themed_app(qapp: QApplication) -> QApplication:
 
 @pytest.fixture()
 def main_window(qtbot, themed_app: QApplication, auth_service: AuthService, app_state: AppState) -> MainWindow:
-    window = MainWindow(auth_service=auth_service, app_state=app_state)
+    window = MainWindow(
+        auth_service=auth_service,
+        app_state=app_state,
+        confirm_logout=lambda **_kwargs: True,
+    )
     qtbot.addWidget(window)
     window.show()
     return window

@@ -189,6 +189,31 @@ QFrame[role="sidebar"], QWidget#sidebar {{
     max-width: {SIDEBAR_WIDTH}px;
 }}
 
+QWidget#topBar {{
+    background-color: {SURFACE};
+    border-bottom: 1px solid {BORDER};
+    min-height: 64px;
+}}
+
+QPushButton[variant="nav"] {{
+    background-color: transparent;
+    color: {TEXT_SECONDARY};
+    border: none;
+    border-radius: {RADIUS}px;
+    padding: {MD}px {LG}px;
+    text-align: left;
+}}
+
+QPushButton[variant="nav"]:hover {{
+    background-color: {SECONDARY};
+    color: {TEXT_PRIMARY};
+}}
+
+QPushButton[variant="nav"]:checked {{
+    background-color: {SECONDARY};
+    color: {ACCENT};
+}}
+
 QDialog, QMessageBox {{
     background-color: {SURFACE};
     color: {TEXT_PRIMARY};
