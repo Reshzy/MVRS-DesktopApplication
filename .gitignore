@@ -13,3 +13,5 @@ dist/
 *.egg-info/
 .idea/
 .vscode/
+CURSOR_PROMPTS_PYSIDE6.md
+MASTER_PYSIDE6.md
