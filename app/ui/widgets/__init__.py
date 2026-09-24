@@ -1,6 +1,7 @@
 from app.ui.widgets.empty_state import EmptyState
 from app.ui.widgets.filter_panel import FilterPanel
 from app.ui.widgets.flow_layout import FlowLayout
+from app.ui.widgets.library_tile import LibraryTile
 from app.ui.widgets.loading_widget import LoadingWidget
 from app.ui.widgets.movie_card import POSTER_HEIGHT, POSTER_RATIO, POSTER_WIDTH, MovieCard
 from app.ui.widgets.password_field import PasswordField
@@ -13,6 +14,7 @@ __all__ = [
     "EmptyState",
     "FilterPanel",
     "FlowLayout",
+    "LibraryTile",
     "LoadingWidget",
     "MovieCard",
     "POSTER_HEIGHT",

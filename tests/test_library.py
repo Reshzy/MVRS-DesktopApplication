@@ -18,6 +18,8 @@ from app.services.watchlist_service import WatchlistService
 from app.utils.constants import DISLIKE, LIKE, NOT_INTERESTED
 from tests.test_movies import FULL_DETAILS
 
+OTHER_DETAILS = FULL_DETAILS.model_copy(update={"tmdb_id": 551, "title": "Inception"})
+
 
 def _user(auth_service: AuthService):
     return auth_service.register(
@@ -43,6 +45,13 @@ def test_watchlist_add_remove_and_duplicate(db_session: Session, auth_service: A
     assert service.is_saved(user.id, FULL_DETAILS.tmdb_id) is False
     assert service.remove(user.id, FULL_DETAILS) is False
 
+    service.add(user.id, FULL_DETAILS)
+    service.add(user.id, OTHER_DETAILS)
+    titles = [entry.movie.title for entry in service.list_entries(user.id)]
+    assert titles.count("Fight Club") == 1
+    assert titles.count("Inception") == 1
+    assert all(entry.watched is False for entry in service.list_entries(user.id))
+
 
 def test_history_mark_watched_updates_existing(db_session: Session, auth_service: AuthService) -> None:
     user = _user(auth_service)
@@ -54,6 +63,16 @@ def test_history_mark_watched_updates_existing(db_session: Session, auth_service
     assert first.id == second.id
     assert service.has_watched(user.id, FULL_DETAILS.tmdb_id)
     assert db_session.scalar(select(func.count()).select_from(WatchHistory)) == 1
+
+    RatingService(db_session).set_rating(user.id, FULL_DETAILS, 4)
+    WatchlistService(db_session).add(user.id, FULL_DETAILS)
+    entries = service.list_entries(user.id)
+    assert len(entries) == 1
+    assert entries[0].movie.title == "Fight Club"
+    assert entries[0].movie.tmdb_id == 550
+    assert entries[0].rating == 4
+    assert entries[0].watched_at is not None
+    assert WatchlistService(db_session).list_entries(user.id)[0].watched is True
 
 
 def test_rating_upsert_and_invalid_range(db_session: Session, auth_service: AuthService) -> None:

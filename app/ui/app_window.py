@@ -46,6 +46,7 @@ SHELL_PAGES = frozenset(
         "movie_details",
     }
 )
+SIDEBAR_PAGES = SHELL_PAGES - {"movie_details"}
 PAGE_TITLES = {
     "welcome": "Welcome",
     "login": "Login",
@@ -126,8 +127,13 @@ class MainWindow(QMainWindow):
             self,
         )
         self.recommendations_page = RecommendationsPage(self)
-        self.watchlist_page = WatchlistPage(self)
-        self.history_page = HistoryPage(self)
+        self.watchlist_page = WatchlistPage(
+            self.watchlist_service,
+            self.history_service,
+            self.image_loader,
+            self,
+        )
+        self.history_page = HistoryPage(self.history_service, self.image_loader, self)
         self.insights_page = InsightsPage(self)
         self.profile_page = ProfilePage(self)
 
@@ -173,6 +179,8 @@ class MainWindow(QMainWindow):
         self.topbar.profile_requested.connect(lambda: self.navigate("profile"))
         self.topbar.search_requested.connect(self.search_from_topbar)
         self.discover_page.movie_selected.connect(self.show_movie_details)
+        self.watchlist_page.movie_selected.connect(self.show_movie_details)
+        self.history_page.movie_selected.connect(self.show_movie_details)
         self.movie_details_page.back_requested.connect(self.return_from_details)
 
         self.show_welcome()
@@ -252,7 +260,11 @@ class MainWindow(QMainWindow):
         self.sidebar.setVisible(in_shell)
         self.topbar.setVisible(in_shell)
         if in_shell:
-            sidebar_id = "discover" if page_id == "movie_details" else page_id
+            if page_id == "movie_details":
+                previous = self.app_state.previous_page
+                sidebar_id = previous if previous in SIDEBAR_PAGES else "discover"
+            else:
+                sidebar_id = page_id
             self.sidebar.set_current(sidebar_id)
             self.topbar.set_title(PAGE_TITLES[page_id])
             self.topbar.set_user(self.app_state.current_user)

@@ -55,6 +55,29 @@ class MovieSummaryDTO(BaseModel):
             genre_ids=[int(item) for item in payload.get("genre_ids") or []],
         )
 
+    @classmethod
+    def from_model(cls, movie: object) -> MovieSummaryDTO:
+        genre_ids: list[int] = []
+        for link in getattr(movie, "genre_links", None) or []:
+            genre = getattr(link, "genre", None)
+            genre_id = getattr(genre, "tmdb_genre_id", None) if genre is not None else None
+            if genre_id:
+                genre_ids.append(int(genre_id))
+        return cls(
+            tmdb_id=int(getattr(movie, "tmdb_id", 0) or 0),
+            title=str(getattr(movie, "title", None) or "Untitled"),
+            original_title=getattr(movie, "original_title", None),
+            overview=getattr(movie, "overview", None),
+            poster_path=getattr(movie, "poster_path", None),
+            backdrop_path=getattr(movie, "backdrop_path", None),
+            release_date=getattr(movie, "release_date", None),
+            vote_average=getattr(movie, "vote_average", None),
+            vote_count=getattr(movie, "vote_count", None),
+            popularity=getattr(movie, "popularity", None),
+            original_language=getattr(movie, "original_language", None),
+            genre_ids=genre_ids,
+        )
+
 
 class MovieDetailsDTO(MovieSummaryDTO):
     runtime: int | None = None

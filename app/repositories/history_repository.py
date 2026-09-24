@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
+from app.models.movie import Movie
+from app.models.movie_genre import MovieGenre
 from app.models.watch_history import WatchHistory
 
 
@@ -35,6 +37,9 @@ class HistoryRepository:
             self._session.scalars(
                 select(WatchHistory)
                 .where(WatchHistory.user_id == user_id)
+                .options(
+                    selectinload(WatchHistory.movie).selectinload(Movie.genre_links).selectinload(MovieGenre.genre)
+                )
                 .order_by(WatchHistory.watched_at.desc())
-            )
+            ).unique()
         )

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
+from app.models.movie import Movie
+from app.models.movie_genre import MovieGenre
 from app.models.watchlist import Watchlist
 
 
@@ -35,6 +37,11 @@ class WatchlistRepository:
     def list_for_user(self, user_id: int) -> list[Watchlist]:
         return list(
             self._session.scalars(
-                select(Watchlist).where(Watchlist.user_id == user_id).order_by(Watchlist.created_at.desc())
-            )
+                select(Watchlist)
+                .where(Watchlist.user_id == user_id)
+                .options(
+                    selectinload(Watchlist.movie).selectinload(Movie.genre_links).selectinload(MovieGenre.genre)
+                )
+                .order_by(Watchlist.created_at.desc())
+            ).unique()
         )

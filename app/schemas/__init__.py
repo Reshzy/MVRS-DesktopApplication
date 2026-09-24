@@ -1,5 +1,5 @@
 from app.schemas.auth_schema import LoginRequest, RegisterRequest
-from app.schemas.library_schema import MovieUserState
+from app.schemas.library_schema import HistoryEntryDTO, MovieUserState, WatchlistEntryDTO
 from app.schemas.movie_schema import (
     CreditsDTO,
     DiscoverFilters,
@@ -19,6 +19,8 @@ __all__ = [
     "MovieDetailsDTO",
     "MoviePageDTO",
     "MovieSummaryDTO",
+    "HistoryEntryDTO",
     "MovieUserState",
     "RegisterRequest",
+    "WatchlistEntryDTO",
 ]

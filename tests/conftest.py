@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QApplication
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -57,7 +58,7 @@ def main_window(
     auth_service: AuthService,
     app_state: AppState,
     movie_service: FakeMovieService,
-) -> MainWindow:
+) -> Iterator[MainWindow]:
     window = MainWindow(
         auth_service=auth_service,
         app_state=app_state,
@@ -66,4 +67,8 @@ def main_window(
     )
     qtbot.addWidget(window)
     window.show()
-    return window
+    try:
+        yield window
+    finally:
+        window.close()
+        QThreadPool.globalInstance().waitForDone(2000)

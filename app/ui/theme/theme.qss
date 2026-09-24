@@ -351,3 +351,15 @@ QLabel#movieDetailsTitle {{
 QLabel#movieDetailsStatus {{
     color: {TEXT_SECONDARY};
 }}
+
+QWidget#libraryTile {{
+    background-color: transparent;
+}}
+
+QLabel#libraryTileMeta {{
+    color: {TEXT_MUTED};
+}}
+
+QPushButton#libraryTileRemoveButton, QPushButton#libraryTileWatchedButton {{
+    padding: {SM}px {MD}px;
+}}

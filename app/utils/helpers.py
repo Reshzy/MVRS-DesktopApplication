@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import ValidationError
 
 
@@ -22,3 +24,11 @@ def format_validation_error(exc: ValidationError) -> str:
 
     unique = list(dict.fromkeys(messages))
     return " ".join(unique) if unique else "Please check your input."
+
+
+def format_user_date(value: datetime | None, prefix: str = "") -> str:
+    if value is None:
+        return f"{prefix}unknown date" if prefix else "Unknown date"
+    local = value.astimezone() if value.tzinfo is not None else value
+    text = local.strftime("%b %d, %Y")
+    return f"{prefix}{text}" if prefix else text

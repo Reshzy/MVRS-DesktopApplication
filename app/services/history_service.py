@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.models.watch_history import WatchHistory
 from app.repositories.history_repository import HistoryRepository
 from app.repositories.movie_repository import MovieRepository
+from app.repositories.rating_repository import RatingRepository
+from app.schemas.library_schema import HistoryEntryDTO
 from app.schemas.movie_schema import MovieSummaryDTO
 from app.services.library_base import UserMovieActionService
 
@@ -13,6 +15,7 @@ class HistoryService(UserMovieActionService):
     def __init__(self, session: Session, movie_repository: MovieRepository | None = None) -> None:
         super().__init__(session, movie_repository)
         self._history = HistoryRepository(session)
+        self._ratings = RatingRepository(session)
 
     def mark_watched(self, user_id: int, movie: MovieSummaryDTO) -> WatchHistory:
         stored = self._resolve_movie(movie)
@@ -28,3 +31,19 @@ class HistoryService(UserMovieActionService):
 
     def list_for_user(self, user_id: int) -> list[WatchHistory]:
         return self._history.list_for_user(user_id)
+
+    def list_entries(self, user_id: int) -> list[HistoryEntryDTO]:
+        ratings = {item.movie_id: item.rating for item in self._ratings.list_for_user(user_id)}
+        entries: list[HistoryEntryDTO] = []
+        for item in self._history.list_for_user(user_id):
+            movie = item.movie
+            if movie is None:
+                continue
+            entries.append(
+                HistoryEntryDTO(
+                    movie=MovieSummaryDTO.from_model(movie),
+                    watched_at=item.watched_at,
+                    rating=ratings.get(item.movie_id),
+                )
+            )
+        return entries
